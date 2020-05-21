@@ -3446,6 +3446,24 @@ if(SHELLCHECK_EXECUTABLE)
 	)
 endif()
 
+set(wiresharkdissectors_LIBS
+	wiretap
+	epan
+	${VERSION_INFO_LIBS}
+	${WIN_WS2_32_LIBRARY}
+	${M_LIBRARIES}
+)
+set(wiresharkdissectors_FILES
+	$<TARGET_OBJECTS:version_info>
+	frame_tvbuff.c
+	epan/wmem/wmem_scopes.c
+	wiresharkdissectors.c
+)
+
+add_library(wiresharkdissectors ${wiresharkdissectors_FILES})
+target_link_libraries(wiresharkdissectors ${wiresharkdissectors_LIBS})
+install(TARGETS wiresharkdissectors LIBRARY DESTINATION ${CMAKE_INSTALL_BINDIR})
+
 #
 # Editor modelines  -  https://www.wireshark.org/tools/modelines.html
 #
