@@ -4,6 +4,6 @@
 #include "ws_symbol_export.h"
 
 WS_DLL_PUBLIC 
-int dissect(char* input, char* output);
+int dissect(char* input, int input_len, char* output);
 
 #endif /* __WIRESHARKDISSECTORS_H__ */
