@@ -1,8 +1,12 @@
 #include "wiresharkdissectors.h"
+#include <stdio.h>
 #include <wiretap/wtap.h>
 #include <epan/epan.h>
-#include <epan/print.h>
+#include <epan/epan_dissect.h>
 #include <cfile.h>
+#include "frame_tvbuff.h"
+#include <epan\print_stream.h>
+#include <epan\print.h>
 
 static const nstime_t *get_frame_ts(struct packet_provider_data *prov, guint32 frame_num);
 static void failure_warning_message(const char *msg_format, va_list ap);
