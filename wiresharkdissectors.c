@@ -1,6 +1,7 @@
 #include "wiresharkdissectors.h"
 
-int test()
+int dissect(const char* input, char* output)
 {
-   return 777;
+   memcpy(output, input, strlen(input));
+   return 0;
 }
