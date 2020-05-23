@@ -7,14 +7,17 @@
 #include "frame_tvbuff.h"
 #include <epan\print_stream.h>
 #include <epan\print.h>
+#include <windows.h>
+#include <fcntl.h>
 
 static const nstime_t *get_frame_ts(struct packet_provider_data *prov, guint32 frame_num);
 static void failure_warning_message(const char *msg_format, va_list ap);
 static void open_failure_message(const char *filename, int err,
-    gboolean for_writing);
+                                 gboolean for_writing);
 static void read_failure_message(const char *filename, int err);
 static void write_failure_message(const char *filename, int err);
 static void failure_message_cont(const char *msg_format, va_list ap);
+static FILE *win32_fmemopen();
 
 int dissect(const char *input, int input_len, char *output)
 {
@@ -85,36 +88,46 @@ int dissect(const char *input, int input_len, char *output)
    output_fields = output_fields_new();
 
    static proto_node_children_grouper_func node_children_grouper = proto_node_group_children_by_unique;
-   static json_dumper jdumper;
-   // jdumper = write_json_preamble(stdout);
+   FILE *mstream = win32_fmemopen();
+   if (mstream == NULL) {
+      return 1;
+   }
+   json_dumper jdumper = {
+        .output_file = mstream
+    };
    pf_flags protocolfilter_flags = PF_NONE;
-   // write_json_proto_tree(output_fields, print_dissections_expanded,
-   //                       0, NULL, protocolfilter_flags,
-   //                       edt, cinfo, node_children_grouper, &jdumper);
+   write_json_proto_tree(output_fields, print_dissections_expanded,
+                         0, NULL, protocolfilter_flags,
+                         edt, cinfo, node_children_grouper, &jdumper);
+   size_t mstream_len = ftell(mstream);
+   rewind(mstream);
+   size_t read_len = fread(output, sizeof(char), mstream_len, mstream);
+   output[read_len * sizeof(char)] = '\0';
+   fclose(mstream);
 
    return 0;
 }
 
-static const nstime_t*
-get_frame_ts(struct packet_provider_data* prov, guint32 frame_num)
+static const nstime_t *
+get_frame_ts(struct packet_provider_data *prov, guint32 frame_num)
 {
-    if (prov->ref && prov->ref->num == frame_num)
-        return &prov->ref->abs_ts;
+   if (prov->ref && prov->ref->num == frame_num)
+      return &prov->ref->abs_ts;
 
-    if (prov->prev_dis && prov->prev_dis->num == frame_num)
-        return &prov->prev_dis->abs_ts;
+   if (prov->prev_dis && prov->prev_dis->num == frame_num)
+      return &prov->prev_dis->abs_ts;
 
-    if (prov->prev_cap && prov->prev_cap->num == frame_num)
-        return &prov->prev_cap->abs_ts;
+   if (prov->prev_cap && prov->prev_cap->num == frame_num)
+      return &prov->prev_cap->abs_ts;
 
-    if (prov->frames)
-    {
-        frame_data* fd = frame_data_sequence_find(prov->frames, frame_num);
+   if (prov->frames)
+   {
+      frame_data *fd = frame_data_sequence_find(prov->frames, frame_num);
 
-        return (fd) ? &fd->abs_ts : NULL;
-    }
+      return (fd) ? &fd->abs_ts : NULL;
+   }
 
-    return NULL;
+   return NULL;
 }
 
 static void
@@ -145,4 +158,32 @@ static void
 failure_warning_message(const char *msg_format, va_list ap)
 {
    // no op
+}
+
+static FILE *
+win32_fmemopen()
+{
+   // Since there is no fmemopen in Windows, based on Larry Osterman's "temporary temporary files":
+   // https://docs.microsoft.com/en-us/archive/blogs/larryosterman/its-only-temporary
+   // we will get a FILE handle which won't write to disk unless we run out of physical memory
+   FILE *ret = NULL;
+   char tempPath[MAX_PATH];
+   if (GetTempPath(MAX_PATH, tempPath))
+   {
+      char tempFileName[MAX_PATH];
+      if (GetTempFileName(tempPath, "", 0, tempFileName))
+      {
+         HANDLE h = CreateFile(tempFileName, GENERIC_READ | GENERIC_WRITE, 0, 0,
+                         OPEN_ALWAYS, FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE, 0);
+         if (h != INVALID_HANDLE_VALUE)
+         {
+            int fd = _open_osfhandle((intptr_t)h, _O_RDWR);
+            if (fd != -1)
+            {
+               ret = _fdopen(fd, "w+");
+            }
+         }
+      }
+   }
+   return ret;
 }
