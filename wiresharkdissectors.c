@@ -10,6 +10,7 @@
 #include <windows.h>
 #include <fcntl.h>
 
+static FILE *win32_fmemopen();
 static const nstime_t *get_frame_ts(struct packet_provider_data *prov, guint32 frame_num);
 static void failure_warning_message(const char *msg_format, va_list ap);
 static void open_failure_message(const char *filename, int err,
@@ -17,7 +18,6 @@ static void open_failure_message(const char *filename, int err,
 static void read_failure_message(const char *filename, int err);
 static void write_failure_message(const char *filename, int err);
 static void failure_message_cont(const char *msg_format, va_list ap);
-static FILE *win32_fmemopen();
 
 int dissect(const char *input, int input_len, char *output)
 {
@@ -100,6 +100,34 @@ int dissect(const char *input, int input_len, char *output)
    return 0;
 }
 
+static FILE *
+win32_fmemopen()
+{
+   // Since there is no fmemopen in Windows, based on Larry Osterman's "temporary temporary files":
+   // https://docs.microsoft.com/en-us/archive/blogs/larryosterman/its-only-temporary
+   // we will get a FILE handle which won't write to disk unless we run out of physical memory
+   FILE *ret = NULL;
+   char tempPath[MAX_PATH];
+   if (GetTempPath(MAX_PATH, tempPath))
+   {
+      char tempFileName[MAX_PATH];
+      if (GetTempFileName(tempPath, "", 0, tempFileName))
+      {
+         HANDLE h = CreateFile(tempFileName, GENERIC_READ | GENERIC_WRITE, 0, 0,
+                         OPEN_ALWAYS, FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE, 0);
+         if (h != INVALID_HANDLE_VALUE)
+         {
+            int fd = _open_osfhandle((intptr_t)h, _O_RDWR);
+            if (fd != -1)
+            {
+               ret = _fdopen(fd, "w+");
+            }
+         }
+      }
+   }
+   return ret;
+}
+
 static const nstime_t *
 get_frame_ts(struct packet_provider_data *prov, guint32 frame_num)
 {
@@ -150,32 +178,4 @@ static void
 failure_warning_message(const char *msg_format, va_list ap)
 {
    // no op
-}
-
-static FILE *
-win32_fmemopen()
-{
-   // Since there is no fmemopen in Windows, based on Larry Osterman's "temporary temporary files":
-   // https://docs.microsoft.com/en-us/archive/blogs/larryosterman/its-only-temporary
-   // we will get a FILE handle which won't write to disk unless we run out of physical memory
-   FILE *ret = NULL;
-   char tempPath[MAX_PATH];
-   if (GetTempPath(MAX_PATH, tempPath))
-   {
-      char tempFileName[MAX_PATH];
-      if (GetTempFileName(tempPath, "", 0, tempFileName))
-      {
-         HANDLE h = CreateFile(tempFileName, GENERIC_READ | GENERIC_WRITE, 0, 0,
-                         OPEN_ALWAYS, FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE, 0);
-         if (h != INVALID_HANDLE_VALUE)
-         {
-            int fd = _open_osfhandle((intptr_t)h, _O_RDWR);
-            if (fd != -1)
-            {
-               ret = _fdopen(fd, "w+");
-            }
-         }
-      }
-   }
-   return ret;
 }
