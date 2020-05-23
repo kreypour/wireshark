@@ -35,14 +35,7 @@ int dissect(const char *input, int input_len, char *output)
    rec.rec_header.packet_header.pkt_encap = WTAP_ENCAP_ETHERNET;
    rec.rec_header.packet_header.caplen = input_len;
    rec.rec_header.packet_header.len = input_len;
-   rec.rec_header.ft_specific_header.record_len = input_len;
-   rec.rec_header.ft_specific_header.record_type = 112;
-   rec.presence_flags = 3;
-   nstime_t ts;
-   ts.nsecs = 148127000;
-   ts.secs = 1470574779;
-   rec.ts = ts;
-   rec.tsprec = 6;
+   rec.presence_flags = 0;
 
    Buffer buf;
    ws_buffer_init(&buf, input_len);
@@ -63,16 +56,15 @@ int dissect(const char *input, int input_len, char *output)
    epan_dissect_t *edt = NULL;
    edt = epan_dissect_new(epan, TRUE, TRUE);
 
-   int offset = 24;
+   int offset = 0;
    frame_data fdata;
-   frame_data_init(&fdata, 1, &rec, offset, 0);
+   frame_data_init(&fdata, 1, &rec, 0, 0);
 
    capture_file cf;
    memset(&cf, 0, sizeof(capture_file));
    cf.provider.ref = &fdata;
    cf.provider.prev_dis = NULL;
    cf.provider.prev_cap = NULL;
-   cf.f_datalen = input_len + 24;
    cf.count = 1;
 
    prime_epan_dissect_with_postdissector_wanted_hfids(&edt);
