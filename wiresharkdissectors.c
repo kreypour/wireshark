@@ -55,7 +55,6 @@ int dissect(const char *input, int input_len, char *output)
    epan_dissect_t *edt = NULL;
    edt = epan_dissect_new(epan, TRUE, TRUE);
 
-   int offset = 0;
    frame_data fdata;
    frame_data_init(&fdata, 1, &rec, 0, 0);
 
@@ -70,7 +69,6 @@ int dissect(const char *input, int input_len, char *output)
    frame_data_set_before_dissect(&fdata, &cf.elapsed_time,
                                  &cf.provider.ref, cf.provider.prev_dis);
 
-   column_info *cinfo = NULL;
    epan_dissect_run_with_taps(edt, WTAP_ENCAP_ETHERNET, &rec,
                               frame_tvbuff_new_buffer(&cf.provider, &fdata, &buf),
                               &fdata, NULL);
@@ -89,7 +87,7 @@ int dissect(const char *input, int input_len, char *output)
    pf_flags protocolfilter_flags = PF_NONE;
    write_json_proto_tree(output_fields, print_dissections_expanded,
                          0, NULL, protocolfilter_flags,
-                         edt, cinfo, node_children_grouper, &jdumper);
+                         edt, NULL, node_children_grouper, &jdumper);
    size_t mstream_len = ftell(mstream);
    rewind(mstream);
    size_t read_len = fread(output, sizeof(char), mstream_len, mstream);
