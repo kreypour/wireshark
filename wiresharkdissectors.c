@@ -21,7 +21,6 @@ static void failure_message_cont(const char *msg_format, va_list ap);
 
 int dissect(const char *input, int input_len, char *output)
 {
-   memcpy(output, input, strlen(input));
    wtap_init(FALSE);
 
    if (!epan_init(NULL, NULL, FALSE))
