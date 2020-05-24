@@ -5,8 +5,8 @@
 #include <epan/epan_dissect.h>
 #include <cfile.h>
 #include "frame_tvbuff.h"
-#include <epan\print_stream.h>
-#include <epan\print.h>
+#include <epan/print_stream.h>
+#include <epan/print.h>
 #include <windows.h>
 #include <fcntl.h>
 
