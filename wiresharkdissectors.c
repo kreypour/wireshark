@@ -21,7 +21,7 @@ static void failure_message_cont(const char *msg_format, va_list ap);
 
 static gboolean init = FALSE;
 
-int dissect(const char *input, int input_len, char *output)
+int dissect(const char *input, int input_len, char *output, int output_len)
 {
    if (!init)
    {
@@ -85,7 +85,7 @@ int dissect(const char *input, int input_len, char *output)
    FILE *mstream = win32_fmemopen();
    if (mstream == NULL)
    {
-      return 1;
+      return (10);
    }
    json_dumper jdumper = {
        .output_file = mstream};
@@ -95,8 +95,15 @@ int dissect(const char *input, int input_len, char *output)
                          edt, NULL, node_children_grouper, &jdumper);
    size_t mstream_len = ftell(mstream);
    rewind(mstream);
-   size_t read_len = fread(output, sizeof(char), mstream_len, mstream);
-   output[read_len * sizeof(char)] = '\0';
+   if (mstream_len < output_len)
+   {
+      size_t read_len = fread(output, sizeof(char), mstream_len, mstream);
+      output[read_len * sizeof(char)] = '\0';
+   }
+   else
+   {
+      return (20);
+   }
 
    epan_free(epan);
    frame_data_destroy(&fdata);
