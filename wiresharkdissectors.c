@@ -66,8 +66,6 @@ int dissect(const char *input, int input_len, char *output, int output_len)
    capture_file cf;
    memset(&cf, 0, sizeof(capture_file));
    cf.provider.ref = &fdata;
-   cf.provider.prev_dis = NULL;
-   cf.provider.prev_cap = NULL;
    cf.count = 1;
 
    prime_epan_dissect_with_postdissector_wanted_hfids(&edt);
