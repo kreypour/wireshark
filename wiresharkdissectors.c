@@ -82,7 +82,6 @@ int dissect(const char *input, int input_len, char *output, int output_len)
    prime_epan_dissect_with_postdissector_wanted_hfids(&edt);
    frame_data_set_before_dissect(fdata, &cf.elapsed_time,
                                  &cf.provider.ref, cf.provider.prev_dis);
-
    epan_dissect_run_with_taps(edt, WTAP_ENCAP_ETHERNET, rec,
                               frame_tvbuff_new_buffer(&cf.provider, fdata, buf),
                               fdata, NULL);
@@ -95,25 +94,24 @@ int dissect(const char *input, int input_len, char *output, int output_len)
       ret = 20;
       goto CLEANUP;
    }
+
    json_dumper jdumper = {
        .output_file = mstream};
    pf_flags protocolfilter_flags = PF_NONE;
    write_json_proto_tree(output_fields, print_dissections_expanded,
                          0, NULL, protocolfilter_flags,
                          edt, NULL, node_children_grouper, &jdumper);
+
    size_t mstream_len = ftell(mstream);
-   rewind(mstream);
-   if (mstream_len < output_len)
-   {
-      size_t read_len = fread(output, sizeof(char), mstream_len, mstream);
-      output[read_len * sizeof(char)] = '\0';
-   }
-   else
+   if (mstream_len > output_len)
    {
       ret = ERROR_INSUFFICIENT_BUFFER;
       goto CLEANUP;
    }
 
+   rewind(mstream);
+   size_t read_len = fread(output, sizeof(char), mstream_len, mstream);
+   output[read_len * sizeof(char)] = '\0';
    ret = 0;
 
 CLEANUP:
