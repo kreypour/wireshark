@@ -27,19 +27,20 @@ static void read_failure_message(const char *filename, int err);
 static void write_failure_message(const char *filename, int err);
 static void failure_message_cont(const char *msg_format, va_list ap);
 
-static proto_node_children_grouper_func node_children_grouper = proto_node_group_children_by_unique;
+static proto_node_children_grouper_func node_children_grouper = 
+         proto_node_group_children_by_unique;
 struct epan_session *epan;
 static gboolean init = FALSE;
 
 int dissect(const char *input, int input_len, char *output, int output_len)
 {
-   int ret = 1;
-   wtap_rec *rec = NULL;
-   Buffer *buf = NULL;
-   epan_dissect_t *edt = NULL;
-   frame_data *fdata = NULL;
-   output_fields_t *output_fields = NULL;
-   FILE *mstream = NULL;
+   int ret                          = 1;
+   wtap_rec *rec                    = NULL;
+   Buffer *buf                      = NULL;
+   epan_dissect_t *edt              = NULL;
+   frame_data *fdata                = NULL;
+   output_fields_t *output_fields   = NULL;
+   FILE *mstream                    = NULL;
 
    if (!init)
    {
@@ -51,15 +52,20 @@ int dissect(const char *input, int input_len, char *output, int output_len)
          goto CLEANUP;
       }
 
-      init_report_message(failure_warning_message, failure_warning_message,
-                          open_failure_message, read_failure_message,
-                          write_failure_message);
+      init_report_message(
+         failure_warning_message,
+         failure_warning_message,
+         open_failure_message,
+         read_failure_message,
+         write_failure_message
+      );
 
       static const struct packet_provider_funcs funcs = {
           get_frame_ts,
           epan_get_interface_name,
           epan_get_interface_description,
-          NULL};
+          NULL
+      };
       epan = epan_new(NULL, &funcs);
 
       init = TRUE;
@@ -88,11 +94,22 @@ int dissect(const char *input, int input_len, char *output, int output_len)
    cf.count = 1;
 
    prime_epan_dissect_with_postdissector_wanted_hfids(&edt);
-   frame_data_set_before_dissect(fdata, &cf.elapsed_time,
-                                 &cf.provider.ref, cf.provider.prev_dis);
-   epan_dissect_run_with_taps(edt, WTAP_ENCAP_ETHERNET, rec,
-                              frame_tvbuff_new_buffer(&cf.provider, fdata, buf),
-                              fdata, NULL);
+
+   frame_data_set_before_dissect(
+      fdata, 
+      &cf.elapsed_time,
+      &cf.provider.ref,
+      cf.provider.prev_dis
+   );
+
+   epan_dissect_run_with_taps(
+      edt,
+      WTAP_ENCAP_ETHERNET,
+      rec,
+      frame_tvbuff_new_buffer(&cf.provider, fdata, buf),
+      fdata,
+      NULL
+   );
 
    output_fields = output_fields_new();
 
@@ -104,11 +121,21 @@ int dissect(const char *input, int input_len, char *output, int output_len)
    }
 
    json_dumper jdumper = {
-       .output_file = mstream};
+       .output_file = mstream
+   };
    pf_flags protocolfilter_flags = PF_NONE;
-   write_json_proto_tree(output_fields, print_dissections_expanded,
-                         0, NULL, protocolfilter_flags,
-                         edt, NULL, node_children_grouper, &jdumper);
+   
+   write_json_proto_tree(
+      output_fields,
+      print_dissections_expanded,
+      0,
+      NULL,
+      protocolfilter_flags,
+      edt,
+      NULL,
+      node_children_grouper,
+      &jdumper
+   );
 
    size_t mstream_len = ftell(mstream);
    if (mstream_len > output_len)
@@ -177,13 +204,22 @@ win32_fmemopen()
    // we will get a FILE handle which won't write to disk unless we run out of physical memory
    FILE *ret = NULL;
    char tempPath[MAX_PATH];
+
    if (GetTempPath(MAX_PATH, tempPath))
    {
       char tempFileName[MAX_PATH];
+
       if (GetTempFileName(tempPath, "", 0, tempFileName))
       {
-         HANDLE h = CreateFile(tempFileName, GENERIC_READ | GENERIC_WRITE, 0, 0,
-                               OPEN_ALWAYS, FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE, 0);
+         HANDLE h = CreateFile(
+            tempFileName,
+            GENERIC_READ | GENERIC_WRITE,
+            0,
+            0,
+            OPEN_ALWAYS, 
+            FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE,
+            0
+         );
          if (h != INVALID_HANDLE_VALUE)
          {
             int fd = _open_osfhandle((intptr_t)h, _O_RDWR);
@@ -194,6 +230,7 @@ win32_fmemopen()
          }
       }
    }
+
    return ret;
 }
 
