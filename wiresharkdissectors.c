@@ -19,13 +19,18 @@ static void read_failure_message(const char *filename, int err);
 static void write_failure_message(const char *filename, int err);
 static void failure_message_cont(const char *msg_format, va_list ap);
 
+static gboolean init = FALSE;
+
 int dissect(const char *input, int input_len, char *output)
 {
-   wtap_init(FALSE);
-
-   if (!epan_init(NULL, NULL, FALSE))
+   if (!init)
    {
-      return 1;
+      wtap_init(FALSE);
+      if (!epan_init(NULL, NULL, FALSE))
+      {
+         return 1;
+      }
+      init = TRUE;
    }
 
    wtap_rec rec;
@@ -78,12 +83,12 @@ int dissect(const char *input, int input_len, char *output)
 
    static proto_node_children_grouper_func node_children_grouper = proto_node_group_children_by_unique;
    FILE *mstream = win32_fmemopen();
-   if (mstream == NULL) {
+   if (mstream == NULL)
+   {
       return 1;
    }
    json_dumper jdumper = {
-        .output_file = mstream
-    };
+       .output_file = mstream};
    pf_flags protocolfilter_flags = PF_NONE;
    write_json_proto_tree(output_fields, print_dissections_expanded,
                          0, NULL, protocolfilter_flags,
@@ -92,6 +97,9 @@ int dissect(const char *input, int input_len, char *output)
    rewind(mstream);
    size_t read_len = fread(output, sizeof(char), mstream_len, mstream);
    output[read_len * sizeof(char)] = '\0';
+
+   epan_free(epan);
+   frame_data_destroy(&fdata);
    fclose(mstream);
 
    return 0;
@@ -111,7 +119,7 @@ win32_fmemopen()
       if (GetTempFileName(tempPath, "", 0, tempFileName))
       {
          HANDLE h = CreateFile(tempFileName, GENERIC_READ | GENERIC_WRITE, 0, 0,
-                         OPEN_ALWAYS, FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE, 0);
+                               OPEN_ALWAYS, FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE, 0);
          if (h != INVALID_HANDLE_VALUE)
          {
             int fd = _open_osfhandle((intptr_t)h, _O_RDWR);
