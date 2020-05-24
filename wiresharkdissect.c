@@ -71,6 +71,7 @@ int dissect(const char *input, int input_len, char *output, int output_len)
       init = TRUE;
    }
 
+   // rec will contain information about the input frame
    rec = malloc(sizeof(wtap_rec));
    wtap_rec_init(rec);
    rec->rec_type = REC_TYPE_PACKET;
@@ -79,22 +80,28 @@ int dissect(const char *input, int input_len, char *output, int output_len)
    rec->rec_header.packet_header.len = input_len;
    rec->presence_flags = 0;
 
+   // this is the buffer that epan dissect takes as input
    buf = malloc(sizeof(Buffer));
    ws_buffer_init(buf, input_len);
    memcpy(buf->data, input, input_len);
 
+   // edt is the structure where we give the input and receive our dissected frame
    edt = epan_dissect_new(epan, TRUE, TRUE);
 
+   // frame data
    fdata = malloc(sizeof(frame_data));
    frame_data_init(fdata, 1, rec, 0, 0);
 
+   // capture file which we don't have
    capture_file cf;
    memset(&cf, 0, sizeof(capture_file));
    cf.provider.ref = fdata;
    cf.count = 1;
 
+   // pre processing
    prime_epan_dissect_with_postdissector_wanted_hfids(&edt);
 
+   // pre processing
    frame_data_set_before_dissect(
       fdata, 
       &cf.elapsed_time,
@@ -102,6 +109,7 @@ int dissect(const char *input, int input_len, char *output, int output_len)
       cf.provider.prev_dis
    );
 
+   // this is where the actual dissection happens the results are in edt
    epan_dissect_run_with_taps(
       edt,
       WTAP_ENCAP_ETHERNET,
@@ -113,6 +121,10 @@ int dissect(const char *input, int input_len, char *output, int output_len)
 
    output_fields = output_fields_new();
 
+   // to convert the results to JSON we will need a stream to provide to
+   // write_json_proto_tree, normally either a file or STDOUT is given
+   // however, we need receive the out put as a string to give back to caller
+   // mstream is a memory file stream that will get the job done
    mstream = win32_fmemopen();
    if (mstream == NULL)
    {
@@ -124,7 +136,8 @@ int dissect(const char *input, int input_len, char *output, int output_len)
        .output_file = mstream
    };
    pf_flags protocolfilter_flags = PF_NONE;
-   
+
+   // generate the JSON output and put it in mstream
    write_json_proto_tree(
       output_fields,
       print_dissections_expanded,
@@ -137,6 +150,7 @@ int dissect(const char *input, int input_len, char *output, int output_len)
       &jdumper
    );
 
+   // get the size of the generated JSON object and make sure it fits
    size_t mstream_len = ftell(mstream);
    if (mstream_len > output_len)
    {
@@ -144,8 +158,12 @@ int dissect(const char *input, int input_len, char *output, int output_len)
       goto CLEANUP;
    }
 
+   // go to the beginning of mstream and read the JSON object
    rewind(mstream);
    size_t read_len = fread(output, sizeof(char), mstream_len, mstream);
+   // per MSDN: "we recommend you null-terminate character data at 
+   // buffer[return_value * size] if the intent of the buffer is to 
+   // act as a C-style string."
    output[read_len * sizeof(char)] = '\0';
    ret = 0;
 
@@ -199,7 +217,7 @@ CLEANUP:
 static FILE *
 win32_fmemopen()
 {
-   // Since there is no fmemopen in Windows, based on Larry Osterman's "temporary temporary files":
+   // since there is no fmemopen in Windows, based on Larry Osterman's "temporary temporary files":
    // https://docs.microsoft.com/en-us/archive/blogs/larryosterman/its-only-temporary
    // we will get a FILE handle which won't write to disk unless we run out of physical memory
    FILE *ret = NULL;
