@@ -19,6 +19,7 @@ static void read_failure_message(const char *filename, int err);
 static void write_failure_message(const char *filename, int err);
 static void failure_message_cont(const char *msg_format, va_list ap);
 
+struct epan_session *epan;
 static gboolean init = FALSE;
 
 int dissect(const char *input, int input_len, char *output, int output_len)
@@ -28,8 +29,19 @@ int dissect(const char *input, int input_len, char *output, int output_len)
       wtap_init(FALSE);
       if (!epan_init(NULL, NULL, FALSE))
       {
-         return 1;
+         return (10);
       }
+      init_report_message(failure_warning_message, failure_warning_message,
+                          open_failure_message, read_failure_message,
+                          write_failure_message);
+
+      static const struct packet_provider_funcs funcs = {
+          get_frame_ts,
+          epan_get_interface_name,
+          epan_get_interface_description,
+          NULL};
+      epan = epan_new(NULL, &funcs);
+
       init = TRUE;
    }
 
@@ -44,18 +56,6 @@ int dissect(const char *input, int input_len, char *output, int output_len)
    Buffer buf;
    ws_buffer_init(&buf, input_len);
    memcpy(buf.data, input, input_len);
-
-   init_report_message(failure_warning_message, failure_warning_message,
-                       open_failure_message, read_failure_message,
-                       write_failure_message);
-
-   struct epan_session *epan = NULL;
-   static const struct packet_provider_funcs funcs = {
-       get_frame_ts,
-       epan_get_interface_name,
-       epan_get_interface_description,
-       NULL};
-   epan = epan_new(NULL, &funcs);
 
    epan_dissect_t *edt = NULL;
    edt = epan_dissect_new(epan, TRUE, TRUE);
@@ -85,7 +85,7 @@ int dissect(const char *input, int input_len, char *output, int output_len)
    FILE *mstream = win32_fmemopen();
    if (mstream == NULL)
    {
-      return (10);
+      return (20);
    }
    json_dumper jdumper = {
        .output_file = mstream};
@@ -102,12 +102,20 @@ int dissect(const char *input, int input_len, char *output, int output_len)
    }
    else
    {
-      return (20);
+      return (30);
    }
 
-   epan_free(epan);
+   epan_dissect_free(edt);
+   postseq_cleanup_all_protocols();
+   ws_buffer_free(&buf);
+   wtap_rec_cleanup(&rec);
    frame_data_destroy(&fdata);
+   output_fields_free(output_fields);
+
    fclose(mstream);
+
+   wtap_cleanup();
+   free_progdirs();
 
    return 0;
 }
