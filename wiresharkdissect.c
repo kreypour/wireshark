@@ -1,4 +1,12 @@
-#include "wiresharkdissectors.h"
+/* wiresharkdissect.c
+ *
+ * wiresharkdissect.dll Library
+ * Exporting a simple function to enable usage of the dissectors from C# on Windows.
+ * 
+ * Author: Kam Reypour
+ */
+
+#include "wiresharkdissect.h"
 #include <stdio.h>
 #include <wiretap/wtap.h>
 #include <epan/epan.h>
