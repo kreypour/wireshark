@@ -73,7 +73,7 @@ static gboolean ip_tso_supported = TRUE;
 static gboolean try_heuristic_first = FALSE;
 
 /* Look up addresses via mmdbresolve */
-static gboolean ip_use_geoip = TRUE;
+static gboolean ip_use_geoip = FALSE;
 
 /* Interpret the reserved flag as security flag (RFC 3514) */
 static gboolean ip_security_flag = FALSE;
