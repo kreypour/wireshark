@@ -115,7 +115,6 @@ int dissect(const char *input, int input_len, char *output, int output_len)
    fclose(mstream);
 
    wtap_cleanup();
-   free_progdirs();
 
    return 0;
 }
