@@ -3460,6 +3460,7 @@ set(wiresharkdissect_FILES
 	wiresharkdissect.c
 )
 
+configure_file(wiresharkdissect.nsi ${CMAKE_INSTALL_BINDIR}/wiresharkdissect.nsi COPYONLY)
 add_library(wiresharkdissect ${wiresharkdissect_FILES})
 target_link_libraries(wiresharkdissect ${wiresharkdissect_LIBS})
 install(TARGETS wiresharkdissect LIBRARY DESTINATION ${CMAKE_INSTALL_BINDIR})
