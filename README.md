@@ -2,10 +2,11 @@
 This fork of Wireshark adds a single dll file, wiresharkdissect.dll, to enable consumption of the dissectors from C# on Windows. The goal is to make minimal changes to the code so when the dissectors are updated, merging the main branch would run into no conflicts.
 
 # Changes
-The code added to the project is within a single .c and corresponding .h file as follows:
+The code added to the project is within a single .c, corresponding .h, and a NSIS installer file as follows:
 ```
 /wiresharkdissect.c
 /wiresharkdissect.h
+/wiresharkdissect.nsi
 ```
 
 Also, the following cmake file has been modified for building the dll.
@@ -17,6 +18,15 @@ Also, the following cmake file has been modified for building the dll.
 Building the project follows the exact same steps provided in the main Wireshark developer doc for win32.
 
 https://www.wireshark.org/docs/wsdg_html_chunked/ChSetupWin32.html#ChWin32Build
+
+Creating the installer file will require installation of NSIS, and EnvVar plugin for NSIS.
+After installation of NSIS, download and install EnvVar plugin by extracting the Zip and copying the DLLs to your NSIS\Plugins folder. Then copy the following files to where the binary folder of your build (where wiresharkdissect.dll is placed). Note that if you don't already have vcruntime140.dll, you need to download it from https://www.microsoft.com/en-us/download/details.aspx?id=52685.
+
+```
+/wiresharkdissect.nsi
+vcruntime140.dll
+```
+Now you can run MakeNSISW.exe, open wiresharkdissect.nsi to compile the installer, wiresharkdissect.exe. The installer will copy all the necessary DLLs to the directory of your choosing and add a system environment variable, WIRESHARK_DISSECT_DIR, containing the installation folder.
 
 # Usage
 The exported function, dissect, takes 4 parameters and returns an error code as follows.
