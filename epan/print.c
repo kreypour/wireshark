@@ -205,7 +205,7 @@ proto_tree_print_node(proto_node *node, gpointer data)
      * text items (whose abbreviation is simply "text").
      */
     if ((pdata->output_only_tables != NULL) && (pdata->level == 0)
-        && (g_hash_table_lookup(pdata->output_only_tables, fi->hfinfo->abbrev) == NULL)) {
+        && (g_hash_table_lookup(pdata->output_only_tables, fi->hfinfo->name) == NULL)) {
         return;
     }
 
@@ -498,7 +498,7 @@ proto_tree_write_node_pdml(proto_node *node, gpointer data)
         } else {
             fputs("<field name=\"", pdata->fh);
         }
-        print_escaped_xml(pdata->fh, fi->hfinfo->abbrev);
+        print_escaped_xml(pdata->fh, fi->hfinfo->name);
 
 #if 0
         /* PDML spec, see:
@@ -616,7 +616,7 @@ proto_tree_write_node_pdml(proto_node *node, gpointer data)
 
     /* We print some levels for PDML. Recurse here. */
     if (node->first_child != NULL) {
-        if (pdata->filter == NULL || check_protocolfilter(pdata->filter, fi->hfinfo->abbrev)) {
+        if (pdata->filter == NULL || check_protocolfilter(pdata->filter, fi->hfinfo->name)) {
             gchar **_filter = NULL;
             /* Remove protocol filter for children, if children should be included */
             if ((pdata->filter_flags&PF_INCLUDE_CHILDREN) == PF_INCLUDE_CHILDREN) {
@@ -638,7 +638,7 @@ proto_tree_write_node_pdml(proto_node *node, gpointer data)
 
             /* print dummy field */
             fputs("<field name=\"filtered\" value=\"", pdata->fh);
-            print_escaped_xml(pdata->fh, fi->hfinfo->abbrev);
+            print_escaped_xml(pdata->fh, fi->hfinfo->name);
             fputs("\" />\n", pdata->fh);
         }
     }
@@ -1079,7 +1079,7 @@ proto_node_to_json_key(proto_node *node)
     const char *json_key;
     // Check if node has abbreviated name.
     if (node->finfo->hfinfo->id != hf_text_only) {
-        json_key = node->finfo->hfinfo->abbrev;
+        json_key = node->finfo->hfinfo->name;
     } else if (node->finfo->rep != NULL) {
         json_key = node->finfo->rep->representation;
     } else {
@@ -1151,9 +1151,9 @@ ek_fill_attr(proto_node *node, GSList **attr_list, GHashTable *attr_table, write
         g_assert(fi);
 
         if (fi_parent == NULL) {
-            node_name = g_strdup(fi->hfinfo->abbrev);
+            node_name = g_strdup(fi->hfinfo->name);
         } else {
-            node_name = g_strconcat(fi_parent->hfinfo->abbrev, "_", fi->hfinfo->abbrev, NULL);
+            node_name = g_strconcat(fi_parent->hfinfo->name, "_", fi->hfinfo->name, NULL);
         }
 
         attr_instances = (GSList *) g_hash_table_lookup(attr_table, node_name);
@@ -1171,7 +1171,7 @@ ek_fill_attr(proto_node *node, GSList **attr_list, GHashTable *attr_table, write
         /* Field, recurse through children*/
         if (fi->hfinfo->type != FT_PROTOCOL && current_node->first_child != NULL) {
             if (pdata->filter != NULL) {
-                if (ek_check_protocolfilter(pdata->filter, fi->hfinfo->abbrev)) {
+                if (ek_check_protocolfilter(pdata->filter, fi->hfinfo->name)) {
                     gchar **_filter = NULL;
                     /* Remove protocol filter for children, if children should be included */
                     if ((pdata->filter_flags&PF_INCLUDE_CHILDREN) == PF_INCLUDE_CHILDREN) {
@@ -1207,10 +1207,10 @@ ek_write_name(proto_node *pnode, gchar* suffix, write_json_data* pdata)
 
     if (fi->hfinfo->parent != -1) {
         header_field_info* parent = proto_registrar_get_nth(fi->hfinfo->parent);
-        str = g_strdup_printf("%s_%s%s", parent->abbrev, fi->hfinfo->abbrev, suffix ? suffix : "");
+        str = g_strdup_printf("%s_%s%s", parent->abbrev, fi->hfinfo->name, suffix ? suffix : "");
         json_dumper_set_member_name(pdata->dumper, str);
     } else {
-        str = g_strdup_printf("%s%s", fi->hfinfo->abbrev, suffix ? suffix : "");
+        str = g_strdup_printf("%s%s", fi->hfinfo->name, suffix ? suffix : "");
         json_dumper_set_member_name(pdata->dumper, str);
     }
     g_free(str);
@@ -1364,12 +1364,12 @@ ek_write_attr(GSList *attr_instances, write_json_data *pdata)
         /* Field */
         if (fi->hfinfo->type != FT_PROTOCOL) {
             if (pdata->filter != NULL
-                && !ek_check_protocolfilter(pdata->filter, fi->hfinfo->abbrev)) {
+                && !ek_check_protocolfilter(pdata->filter, fi->hfinfo->name)) {
 
                 /* print dummy field */
                 json_dumper_begin_object(pdata->dumper);
                 json_dumper_set_member_name(pdata->dumper, "filtered");
-                json_dumper_value_string(pdata->dumper, fi->hfinfo->abbrev);
+                json_dumper_value_string(pdata->dumper, fi->hfinfo->name);
                 json_dumper_end_object(pdata->dumper);
             } else {
                 ek_write_field_value(fi, pdata);
@@ -1379,7 +1379,7 @@ ek_write_attr(GSList *attr_instances, write_json_data *pdata)
             json_dumper_begin_object(pdata->dumper);
 
             if (pdata->filter != NULL) {
-                if (ek_check_protocolfilter(pdata->filter, fi->hfinfo->abbrev)) {
+                if (ek_check_protocolfilter(pdata->filter, fi->hfinfo->name)) {
                     gchar **_filter = NULL;
                     /* Remove protocol filter for children, if children should be included */
                     if ((pdata->filter_flags&PF_INCLUDE_CHILDREN) == PF_INCLUDE_CHILDREN) {
@@ -1396,7 +1396,7 @@ ek_write_attr(GSList *attr_instances, write_json_data *pdata)
                 } else {
                     /* print dummy field */
                     json_dumper_set_member_name(pdata->dumper, "filtered");
-                    json_dumper_value_string(pdata->dumper, fi->hfinfo->abbrev);
+                    json_dumper_value_string(pdata->dumper, fi->hfinfo->name);
                 }
             } else {
                 proto_tree_write_node_ek(pnode, pdata);
@@ -2325,7 +2325,7 @@ static void proto_tree_get_node_field_values(proto_node *node, gpointer data)
     /* dissection with an invisible proto tree? */
     g_assert(fi);
 
-    field_index = g_hash_table_lookup(call_data->fields->field_indicies, fi->hfinfo->abbrev);
+    field_index = g_hash_table_lookup(call_data->fields->field_indicies, fi->hfinfo->name);
     if (NULL != field_index) {
         format_field_values(call_data->fields, field_index,
                             get_node_field_value(fi, call_data->edt) /* g_ alloc'd string */
@@ -2557,7 +2557,7 @@ gchar* get_node_field_value(field_info* fi, epan_dissect_t* edt)
                 return g_strdup(fi->rep->representation);
             } else {
                 /* Just print out the protocol abbreviation */
-                return g_strdup(fi->hfinfo->abbrev);
+                return g_strdup(fi->hfinfo->name);
             }
         case FT_NONE:
             /* Return "1" so that the presence of a field of type
