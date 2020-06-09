@@ -39,28 +39,38 @@ Section "install"
 
     # files to be installed
     File wiresharkdissect.dll
+    File airpcap.dll
     File brotlicommon.dll
     File brotlidec.dll
     File cares.dll
     File comerr64.dll
     File glib-2.dll
     File gmodule-2.dll
+    File gthread-2.dll
     File k5sprt64.dll
     File krb5_64.dll
+    File libbcg729.dll
     File libcharset.dll
     File libffi-6.dll
+    File libgcc_s_seh-1.dll
     File libgcrypt-20.dll
     File libgmp-10.dll
     File libgnutls-30.dll
     File libgpg-error-0.dll
     File libhogweed-4.dll
     File libiconv.dll
+    File libilbc.dll
     File libintl.dll
+    File libmaxminddb-0.dll
     File libnettle-6.dll
     File libp11-kit-0.dll
+    File libsbc-1.dll
     File libsmi-2.dll
     File libsnappy-1.dll
+    File libspandsp-2.dll
+    File libssh.dll
     File libtasn1-6.dll
+    File libwinpthread-1.dll
     File libwireshark.dll
     File libwiretap.dll
     File libwsutil.dll
@@ -71,6 +81,7 @@ Section "install"
     File nghttp2.dll
     File pcre.dll
     File vcruntime140.dll
+    File WinSparkle.dll
     File zlib1.dll
     File zstd.dll
 
@@ -105,28 +116,38 @@ functionEnd
 section "uninstall"
     # remove files
     delete $INSTDIR\wiresharkdissect.dll
+    delete $INSTDIR\airpcap.dll
     delete $INSTDIR\brotlicommon.dll
     delete $INSTDIR\brotlidec.dll
     delete $INSTDIR\cares.dll
     delete $INSTDIR\comerr64.dll
     delete $INSTDIR\glib-2.dll
     delete $INSTDIR\gmodule-2.dll
+    delete $INSTDIR\gthread-2.dll
     delete $INSTDIR\k5sprt64.dll
     delete $INSTDIR\krb5_64.dll
+    delete $INSTDIR\libbcg729.dll
     delete $INSTDIR\libcharset.dll
     delete $INSTDIR\libffi-6.dll
+    delete $INSTDIR\libgcc_s_seh-1.dll
     delete $INSTDIR\libgcrypt-20.dll
     delete $INSTDIR\libgmp-10.dll
     delete $INSTDIR\libgnutls-30.dll
     delete $INSTDIR\libgpg-error-0.dll
     delete $INSTDIR\libhogweed-4.dll
     delete $INSTDIR\libiconv.dll
+    delete $INSTDIR\libilbc.dll
     delete $INSTDIR\libintl.dll
+    delete $INSTDIR\libmaxminddb-0.dll
     delete $INSTDIR\libnettle-6.dll
     delete $INSTDIR\libp11-kit-0.dll
+    delete $INSTDIR\libsbc-1.dll
     delete $INSTDIR\libsmi-2.dll
     delete $INSTDIR\libsnappy-1.dll
+    delete $INSTDIR\libspandsp-2.dll
+    delete $INSTDIR\libssh.dll
     delete $INSTDIR\libtasn1-6.dll
+    delete $INSTDIR\libwinpthread-1.dll
     delete $INSTDIR\libwireshark.dll
     delete $INSTDIR\libwiretap.dll
     delete $INSTDIR\libwsutil.dll
@@ -137,6 +158,7 @@ section "uninstall"
     delete $INSTDIR\nghttp2.dll
     delete $INSTDIR\pcre.dll
     delete $INSTDIR\vcruntime140.dll
+    delete $INSTDIR\WinSparkle.dll
     delete $INSTDIR\zlib1.dll
     delete $INSTDIR\zstd.dll
 
