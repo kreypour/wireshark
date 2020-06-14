@@ -1,7 +1,18 @@
+!define PRODUCT_VERSION "1.0.0.0"
+!define VERSION "1.0.0.0"
+
 !define APPID "wiresharkdissect"
 !define APPNAME "Wireshark Dissect"
 !define DESCRIPTION "Wireshark Libraries for EPAN Dissectors"
 !define ENVVAR "WIRESHARK_DISSECT_DIR"
+
+VIProductVersion "${PRODUCT_VERSION}"
+VIFileVersion "${VERSION}"
+VIAddVersionKey "FileVersion" "${VERSION}"
+VIAddVersionKey "ProductVersion" "${VERSION}"
+VIAddVersionKey "LegalCopyright" "GPL"
+VIAddVersionKey "FileDescription" "${DESCRIPTION}"
+VIAddVersionKey "ProductName" "${APPNAME}"
 
 Unicode True
 RequestExecutionLevel admin
