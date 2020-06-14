@@ -59,6 +59,10 @@ An allocated memory buffer to receive the dissected frame as a JSON object.
 
 The size of allocation of output.
 
+**detailed_json**
+
+The results can be either a summary text or a detailed json object that is controlled by this parameter.
+
 ## Return Value
 
 Return value is an int error code. The output buffer should only be used upon getting return value of 0, which is success. One special return value is 122 (ERROR_INSUFFICIENT_BUFFER), which means the output buffer provided is too small, so a retry with a bigger buffer should succeed.
@@ -75,7 +79,7 @@ namespace WiresharkdissectTest
     class Program
     {
         [DllImport(@"\path\to\wiresharkdissect.dll")]
-        static extern int dissect(byte[] input, int input_len, StringBuilder output, int output_len);
+        static extern int dissect(byte[] input, int input_len, StringBuilder output, int output_len, bool detailed_json);
 
         static void Main(string[] args)
         {
@@ -89,7 +93,7 @@ namespace WiresharkdissectTest
                 0x73, 0x74, 0x75, 0x76, 0x77, 0x61, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67, 0x68, 0x69
             };
 
-            int err = dissect(input, input.Length, output, output_len);
+            int err = dissect(input, input.Length, output, output_len, true);
             if (err == 0)
             {
                 Console.WriteLine(output.ToString());

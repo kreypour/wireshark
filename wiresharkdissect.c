@@ -32,7 +32,7 @@ static proto_node_children_grouper_func node_children_grouper =
 struct epan_session *epan;
 static gboolean init = FALSE;
 
-int dissect(const char *input, int input_len, char *output, int output_len)
+int dissect(const char *input, int input_len, char *output, int output_len, gboolean detailed_json)
 {
    int ret                          = 1;
    wtap_rec *rec                    = NULL;
@@ -61,10 +61,10 @@ int dissect(const char *input, int input_len, char *output, int output_len)
       );
 
       static const struct packet_provider_funcs funcs = {
-          get_frame_ts,
-          epan_get_interface_name,
-          epan_get_interface_description,
-          NULL
+         get_frame_ts,
+         epan_get_interface_name,
+         epan_get_interface_description,
+         NULL
       };
       epan = epan_new(NULL, &funcs);
 
@@ -132,25 +132,37 @@ int dissect(const char *input, int input_len, char *output, int output_len)
       goto CLEANUP;
    }
 
-   json_dumper jdumper = {
-       .output_file = mstream
-   };
-   pf_flags protocolfilter_flags = PF_NONE;
+   if (detailed_json)
+   {
+      json_dumper jdumper = {
+         .output_file = mstream
+      };
+      pf_flags protocolfilter_flags = PF_NONE;
 
-   // generate the JSON output and put it in mstream
-   write_json_proto_tree(
-      output_fields,
-      print_dissections_expanded,
-      0,
-      NULL,
-      protocolfilter_flags,
-      edt,
-      NULL,
-      node_children_grouper,
-      &jdumper
-   );
+      // generate the JSON output and put it in mstream
+      write_json_proto_tree(
+         output_fields,
+         print_dissections_expanded,
+         0,
+         NULL,
+         protocolfilter_flags,
+         edt,
+         NULL,
+         node_children_grouper,
+         &jdumper
+      );
+   }
+   else
+   {
+      print_stream_t *print_stream = print_stream_text_stdio_new(mstream);
+      if (!proto_tree_print(TRUE, TRUE, edt, FALSE, print_stream))
+      {
+         ret = 30;
+         goto CLEANUP;
+      }
+   }
 
-   // get the size of the generated JSON object and make sure it fits
+   // get the size of the generated output and make sure it fits
    size_t mstream_len = ftell(mstream);
    if (mstream_len > output_len)
    {
