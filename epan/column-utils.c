@@ -1806,7 +1806,7 @@ col_set_cls_time(const frame_data *fd, column_info *cinfo, const gint col)
 
   case TS_NOT_SET:
     /* code is missing for this case, but I don't know which [jmayer20051219] */
-    g_assert_not_reached();
+    //g_assert_not_reached();
     break;
   }
 }

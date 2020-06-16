@@ -17,7 +17,9 @@
 #include <epan/print.h>
 #include <windows.h>
 #include <fcntl.h>
+#include <wsutil\utf8_entities.h>
 
+char* print_columns(column_info* cinfo, const epan_dissect_t* edt);
 static FILE *win32_fmemopen();
 static const nstime_t *get_frame_ts(struct packet_provider_data *prov, guint32 frame_num);
 static void failure_warning_message(const char *msg_format, va_list ap);
@@ -26,6 +28,8 @@ static void open_failure_message(const char *filename, int err,
 static void read_failure_message(const char *filename, int err);
 static void write_failure_message(const char *filename, int err);
 static void failure_message_cont(const char *msg_format, va_list ap);
+
+static gchar* delimiter_char = " ";
 
 static proto_node_children_grouper_func node_children_grouper = 
          proto_node_group_children_by_unique;
@@ -109,15 +113,17 @@ int dissect(const char *input, int input_len, char *output, int output_len, gboo
       cf.provider.prev_dis
    );
 
+   column_info cinfo;
+   build_column_format_array(&cinfo, 8, TRUE);
    // this is where the actual dissection happens the results are in edt
-   epan_dissect_run_with_taps(
-      edt,
-      WTAP_ENCAP_ETHERNET,
-      rec,
-      frame_tvbuff_new_buffer(&cf.provider, fdata, buf),
-      fdata,
-      NULL
-   );
+    epan_dissect_run_with_taps(
+       edt,
+       WTAP_ENCAP_ETHERNET,
+       rec,
+       frame_tvbuff_new_buffer(&cf.provider, fdata, buf),
+       fdata,
+       &cinfo
+    );
 
    output_fields = output_fields_new();
 
@@ -151,32 +157,36 @@ int dissect(const char *input, int input_len, char *output, int output_len, gboo
          node_children_grouper,
          &jdumper
       );
+
+      // get the size of the generated output and make sure it fits
+      size_t mstream_len = ftell(mstream);
+      if (mstream_len > output_len)
+      {
+         ret = ERROR_INSUFFICIENT_BUFFER;
+         goto CLEANUP;
+      }
+
+      // go to the beginning of mstream and read the JSON object
+      rewind(mstream);
+      size_t read_len = fread(output, sizeof(char), mstream_len, mstream);
+      // per MSDN: "we recommend you null-terminate character data at 
+      // buffer[return_value * size] if the intent of the buffer is to 
+      // act as a C-style string."
+      output[read_len * sizeof(char)] = '\0';
    }
    else
    {
-      print_stream_t *print_stream = print_stream_text_stdio_new(mstream);
-      if (!proto_tree_print(TRUE, TRUE, edt, FALSE, print_stream))
+      epan_dissect_fill_in_columns(edt, FALSE, TRUE);
+      char *line = print_columns(&cinfo, edt);
+      int line_len = strlen(line);
+      if (output_len < line_len)
       {
-         ret = 30;
+         ret = ERROR_INSUFFICIENT_BUFFER;
          goto CLEANUP;
       }
+      strcpy(output, line);
    }
 
-   // get the size of the generated output and make sure it fits
-   size_t mstream_len = ftell(mstream);
-   if (mstream_len > output_len)
-   {
-      ret = ERROR_INSUFFICIENT_BUFFER;
-      goto CLEANUP;
-   }
-
-   // go to the beginning of mstream and read the JSON object
-   rewind(mstream);
-   size_t read_len = fread(output, sizeof(char), mstream_len, mstream);
-   // per MSDN: "we recommend you null-terminate character data at 
-   // buffer[return_value * size] if the intent of the buffer is to 
-   // act as a C-style string."
-   output[read_len * sizeof(char)] = '\0';
    ret = 0;
 
 CLEANUP:
@@ -262,6 +272,296 @@ win32_fmemopen()
    }
 
    return ret;
+}
+
+static char *
+get_line_buf(size_t len)
+{
+   static char *line_bufp = NULL;
+   static size_t line_buf_len = 256;
+   size_t new_line_buf_len;
+
+   for (new_line_buf_len = line_buf_len; len > new_line_buf_len;
+        new_line_buf_len *= 2)
+      ;
+   if (line_bufp == NULL)
+   {
+      line_buf_len = new_line_buf_len;
+      line_bufp = (char *)g_malloc(line_buf_len + 1);
+   }
+   else
+   {
+      if (new_line_buf_len > line_buf_len)
+      {
+         line_buf_len = new_line_buf_len;
+         line_bufp = (char *)g_realloc(line_bufp, line_buf_len + 1);
+      }
+   }
+   return line_bufp;
+}
+
+static inline void
+put_string(char *dest, const char *str, size_t str_len)
+{
+   memcpy(dest, str, str_len);
+   dest[str_len] = '\0';
+}
+
+static inline void
+put_spaces_string(char *dest, const char *str, size_t str_len, size_t str_with_spaces)
+{
+   size_t i;
+
+   for (i = str_len; i < str_with_spaces; i++)
+      *dest++ = ' ';
+
+   put_string(dest, str, str_len);
+}
+
+static inline void
+put_string_spaces(char *dest, const char *str, size_t str_len, size_t str_with_spaces)
+{
+   size_t i;
+
+   memcpy(dest, str, str_len);
+   for (i = str_len; i < str_with_spaces; i++)
+      dest[i] = ' ';
+
+   dest[str_with_spaces] = '\0';
+}
+
+// this is tshark's print_columns with some modifications
+char *print_columns(column_info *cinfo, const epan_dissect_t *edt)
+{
+   char* line_bufp;
+   int i;
+   size_t buf_offset;
+   size_t column_len;
+   size_t col_len;
+   col_item_t *col_item;
+   gchar str_format[11];
+
+   line_bufp = get_line_buf(256);
+   buf_offset = 0;
+   *line_bufp = '\0';
+
+   for (i = 0; i < cinfo->num_cols; i++)
+   {
+      col_item = &cinfo->columns[i];
+      /* Skip columns not marked as visible. */
+      if (!get_column_visible(i))
+         continue;
+      switch (col_item->col_fmt)
+      {
+      case COL_NUMBER:
+         // we don't need a column number
+         continue;
+
+      case COL_CLS_TIME:
+      case COL_REL_TIME:
+      case COL_ABS_TIME:
+      case COL_ABS_YMD_TIME:  /* XXX - wider */
+      case COL_ABS_YDOY_TIME: /* XXX - wider */
+      case COL_UTC_TIME:
+      case COL_UTC_YMD_TIME:  /* XXX - wider */
+      case COL_UTC_YDOY_TIME: /* XXX - wider */
+         // we don't need time info
+         continue;
+
+      case COL_DEF_SRC:
+      case COL_RES_SRC:
+      case COL_UNRES_SRC:
+      case COL_DEF_DL_SRC:
+      case COL_RES_DL_SRC:
+      case COL_UNRES_DL_SRC:
+      case COL_DEF_NET_SRC:
+      case COL_RES_NET_SRC:
+      case COL_UNRES_NET_SRC:
+         column_len = col_len = strlen(col_item->col_data);
+         if (column_len < 12)
+            column_len = 12;
+         line_bufp = get_line_buf(buf_offset + column_len);
+         put_spaces_string(line_bufp + buf_offset, col_item->col_data, col_len, column_len);
+         break;
+
+      case COL_DEF_DST:
+      case COL_RES_DST:
+      case COL_UNRES_DST:
+      case COL_DEF_DL_DST:
+      case COL_RES_DL_DST:
+      case COL_UNRES_DL_DST:
+      case COL_DEF_NET_DST:
+      case COL_RES_NET_DST:
+      case COL_UNRES_NET_DST:
+         column_len = col_len = strlen(col_item->col_data);
+         if (column_len < 12)
+            column_len = 12;
+         line_bufp = get_line_buf(buf_offset + column_len);
+         put_string_spaces(line_bufp + buf_offset, col_item->col_data, col_len, column_len);
+         break;
+
+      default:
+         column_len = strlen(col_item->col_data);
+         line_bufp = get_line_buf(buf_offset + column_len);
+         put_string(line_bufp + buf_offset, col_item->col_data, column_len);
+         break;
+      }
+      buf_offset += column_len;
+      if (i != cinfo->num_cols - 1)
+      {
+         /*
+       * This isn't the last column, so we need to print a
+       * separator between this column and the next.
+       *
+       * If we printed a network source and are printing a
+       * network destination of the same type next, separate
+       * them with a UTF-8 right arrow; if we printed a network
+       * destination and are printing a network source of the same
+       * type next, separate them with a UTF-8 left arrow;
+       * otherwise separate them with a space.
+       *
+       * We add enough space to the buffer for " \xe2\x86\x90 "
+       * or " \xe2\x86\x92 ", even if we're only adding " ".
+       */
+         line_bufp = get_line_buf(buf_offset + 5);
+         switch (col_item->col_fmt)
+         {
+
+         case COL_DEF_SRC:
+         case COL_RES_SRC:
+         case COL_UNRES_SRC:
+            switch (cinfo->columns[i + 1].col_fmt)
+            {
+
+            case COL_DEF_DST:
+            case COL_RES_DST:
+            case COL_UNRES_DST:
+               g_snprintf(str_format, sizeof(str_format), "%s%s%s", delimiter_char, UTF8_RIGHTWARDS_ARROW, delimiter_char);
+               put_string(line_bufp + buf_offset, str_format, 5);
+               buf_offset += 5;
+               break;
+
+            default:
+               put_string(line_bufp + buf_offset, delimiter_char, 1);
+               buf_offset += 1;
+               break;
+            }
+            break;
+
+         case COL_DEF_DL_SRC:
+         case COL_RES_DL_SRC:
+         case COL_UNRES_DL_SRC:
+            switch (cinfo->columns[i + 1].col_fmt)
+            {
+
+            case COL_DEF_DL_DST:
+            case COL_RES_DL_DST:
+            case COL_UNRES_DL_DST:
+               g_snprintf(str_format, sizeof(str_format), "%s%s%s", delimiter_char, UTF8_RIGHTWARDS_ARROW, delimiter_char);
+               put_string(line_bufp + buf_offset, str_format, 5);
+               buf_offset += 5;
+               break;
+
+            default:
+               put_string(line_bufp + buf_offset, delimiter_char, 1);
+               buf_offset += 1;
+               break;
+            }
+            break;
+
+         case COL_DEF_NET_SRC:
+         case COL_RES_NET_SRC:
+         case COL_UNRES_NET_SRC:
+            switch (cinfo->columns[i + 1].col_fmt)
+            {
+
+            case COL_DEF_NET_DST:
+            case COL_RES_NET_DST:
+            case COL_UNRES_NET_DST:
+               g_snprintf(str_format, sizeof(str_format), "%s%s%s", delimiter_char, UTF8_RIGHTWARDS_ARROW, delimiter_char);
+               put_string(line_bufp + buf_offset, str_format, 5);
+               buf_offset += 5;
+               break;
+
+            default:
+               put_string(line_bufp + buf_offset, delimiter_char, 1);
+               buf_offset += 1;
+               break;
+            }
+            break;
+
+         case COL_DEF_DST:
+         case COL_RES_DST:
+         case COL_UNRES_DST:
+            switch (cinfo->columns[i + 1].col_fmt)
+            {
+
+            case COL_DEF_SRC:
+            case COL_RES_SRC:
+            case COL_UNRES_SRC:
+               g_snprintf(str_format, sizeof(str_format), "%s%s%s", delimiter_char, UTF8_LEFTWARDS_ARROW, delimiter_char);
+               put_string(line_bufp + buf_offset, str_format, 5);
+               buf_offset += 5;
+               break;
+
+            default:
+               put_string(line_bufp + buf_offset, delimiter_char, 1);
+               buf_offset += 1;
+               break;
+            }
+            break;
+
+         case COL_DEF_DL_DST:
+         case COL_RES_DL_DST:
+         case COL_UNRES_DL_DST:
+            switch (cinfo->columns[i + 1].col_fmt)
+            {
+
+            case COL_DEF_DL_SRC:
+            case COL_RES_DL_SRC:
+            case COL_UNRES_DL_SRC:
+               g_snprintf(str_format, sizeof(str_format), "%s%s%s", delimiter_char, UTF8_LEFTWARDS_ARROW, delimiter_char);
+               put_string(line_bufp + buf_offset, str_format, 5);
+               buf_offset += 5;
+               break;
+
+            default:
+               put_string(line_bufp + buf_offset, delimiter_char, 1);
+               buf_offset += 1;
+               break;
+            }
+            break;
+
+         case COL_DEF_NET_DST:
+         case COL_RES_NET_DST:
+         case COL_UNRES_NET_DST:
+            switch (cinfo->columns[i + 1].col_fmt)
+            {
+
+            case COL_DEF_NET_SRC:
+            case COL_RES_NET_SRC:
+            case COL_UNRES_NET_SRC:
+               g_snprintf(str_format, sizeof(str_format), "%s%s%s", delimiter_char, UTF8_LEFTWARDS_ARROW, delimiter_char);
+               put_string(line_bufp + buf_offset, str_format, 5);
+               buf_offset += 5;
+               break;
+
+            default:
+               put_string(line_bufp + buf_offset, delimiter_char, 1);
+               buf_offset += 1;
+               break;
+            }
+            break;
+
+         default:
+            put_string(line_bufp + buf_offset, delimiter_char, 1);
+            buf_offset += 1;
+            break;
+         }
+      }
+   }
+
+   return line_bufp;
 }
 
 static const nstime_t *
