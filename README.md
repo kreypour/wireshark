@@ -37,7 +37,8 @@ int dissect(
     const char *input,
     int input_len,
     char *output,
-    int output_len
+    int output_len,
+    bool detailed_json
 );
 ```
 
