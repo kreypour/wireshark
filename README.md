@@ -79,7 +79,12 @@ namespace WiresharkdissectTest
     class Program
     {
         [DllImport(@"\path\to\wiresharkdissect.dll")]
-        static extern int dissect(byte[] input, int input_len, StringBuilder output, int output_len, bool detailed_json);
+        static extern int dissect(
+            byte[] input,
+            int input_len,
+            [MarshalAs(UnmanagedType.LPUTF8Str)] StringBuilder output,
+            int output_len,
+            bool detailed_json);
 
         static void Main(string[] args)
         {
@@ -96,6 +101,7 @@ namespace WiresharkdissectTest
             int err = dissect(input, input.Length, output, output_len, true);
             if (err == 0)
             {
+                Console.OutputEncoding = System.Text.Encoding.Unicode;
                 Console.WriteLine(output.ToString());
             }
         }
