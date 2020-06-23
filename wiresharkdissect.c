@@ -17,7 +17,7 @@
 #include <epan/print.h>
 #include <windows.h>
 #include <fcntl.h>
-#include <wsutil\utf8_entities.h>
+#include <wsutil/utf8_entities.h>
 
 char* print_columns(column_info* cinfo, const epan_dissect_t* edt);
 static FILE *win32_fmemopen();
@@ -36,7 +36,15 @@ static proto_node_children_grouper_func node_children_grouper =
 struct epan_session *epan;
 static gboolean init = FALSE;
 
-int dissect(const char *input, int input_len, char *output, int output_len, gboolean detailed_json)
+int dissect(
+   const char *input,
+   int input_len,
+   char *output,
+   int output_len,
+   gboolean detailed_json,
+   int pkt_size,
+   int encap_type,
+   guint64 timestamp)
 {
    int ret                          = 1;
    wtap_rec *rec                    = NULL;
@@ -81,7 +89,7 @@ int dissect(const char *input, int input_len, char *output, int output_len, gboo
    rec->rec_type = REC_TYPE_PACKET;
    rec->rec_header.packet_header.pkt_encap = WTAP_ENCAP_ETHERNET;
    rec->rec_header.packet_header.caplen = input_len;
-   rec->rec_header.packet_header.len = input_len;
+   rec->rec_header.packet_header.len = pkt_size;
    rec->presence_flags = 0;
 
    // this is the buffer that epan dissect takes as input
@@ -118,7 +126,7 @@ int dissect(const char *input, int input_len, char *output, int output_len, gboo
    // this is where the actual dissection happens the results are in edt
     epan_dissect_run_with_taps(
        edt,
-       WTAP_ENCAP_ETHERNET,
+       encap_type, // found in wtap.h, i.e. WTAP_ENCAP_ETHERNET
        rec,
        frame_tvbuff_new_buffer(&cf.provider, fdata, buf),
        fdata,

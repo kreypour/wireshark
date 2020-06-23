@@ -13,6 +13,15 @@
 #include <glib.h>
 
 WS_DLL_PUBLIC
-int dissect(const char *input, int input_len, char *output, int output_len, gboolean detailed_json);
+int dissect(
+   const char *input,
+   int input_len,
+   char *output,
+   int output_len,
+   gboolean detailed_json,
+   int pkt_size,
+   int encap_type,
+   guint64 timestamp
+);
 
 #endif /* __WIRESHARKDISSECTORS_H__ */
