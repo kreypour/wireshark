@@ -3726,6 +3726,10 @@ Huang Qiangxiong        <qiangxiong.huang[AT]qq.com> {
 	HTTP2 dissector: add streaming mode reassembly and dissecting DATA according to content-type features.
 }
 
+Jeffrey Nichols		<jsnichols[AT]suprocktech.com> {
+	Asphodel dissector
+}
+
 and by:
 
 Georgi Guninski		<guninski[AT]guninski.com>
@@ -4006,6 +4010,7 @@ Alex Sirr		<alexsirruw[AT]gmail.com>
 Alex Tessmer		<dev[AT]tessmer.me>
 AlexL			<loginov.alex.valer[AT]gmail.com>
 Alexander Couzens	<lynxis[AT]fe80.eu>
+Alexander Dahl		<ada[AT]thorsis.com>
 Alexander Gryanko	<xpahos[AT]gmail.com>
 Alexander Gärtner	<sphinxs1988[AT]googlemail.com>
 Alexander Meier		<MeierAPunkt[AT]googlemail.com>
@@ -4211,6 +4216,7 @@ Eldon Stegall		<wireshark-gerrit[AT]eldondev.com>
 Eliot Lear		<lear[AT]cisco.com>
 Emery Hemingway		<emery[AT]vfemail.net>
 Emmanuel Grumbach	<emmanuel.grumbach[AT]intel.com>
+Enrique Giraldo		<enrique.giraldo[AT]wslw.es>
 Eric Anderson		<andersoe[AT]cs.cmu.edu>
 Eric Wang		<terminal_0[AT]aol.com>
 Eric Wetzel		<thewetzel[AT]gmail.com>
@@ -4256,6 +4262,7 @@ Gerhard KHUENY		<Gerhard.KHUENY[AT]bachmann.info>
 Gianluca Borello	<g.borello[AT]gmail.com>
 Gilles Dufour		<dufour.gilles[AT]gmail.com>
 Gizem Yurdagul		<gizemnuryurdagul[AT]gmail.com>
+Glenden Lee		<thornhillextreme[AT]gmail.com>
 Gloria Pozuelo		<gloria.pozuelo[AT]bics.com>
 Gordon Ross		<gordon.w.ross[AT]gmail.com>
 Graham Shanks		<graham.shanks[AT]blueyonder.co.uk>
@@ -4509,6 +4516,7 @@ Mike Ryan		<mikeryan[AT]lacklustre.net>
 Milan Stute		<mstute[AT]seemoo.tu-darmstadt.de>
 Milos Jovanovic		<jeyem815[AT]gmail.com>
 Miltos Patsiouras	<mipatsio[AT]gmail.com>
+Minh Phan		<phanducnhatminh[AT]gmail.com>
 Mirko Parthey		<mirko.parthey[AT]web.de>
 Moraney Jalil		<moraney.jalil[AT]outlook.com>
 Morten Tryfoss		<morten[AT]tryfoss.no>
@@ -4728,6 +4736,7 @@ Tom Haynes		<loghyr[AT]hammerspace.com>
 Tom Haynes		<loghyr[AT]primarydata.com>
 Tom Nisbet		<t.talk[AT]nisbethome.com>
 Tomas Konecny		<tomas.konecny[AT]eldis.cz>
+Tomas Kukosa		<kukosa[AT]herman.cz>
 Tomas Kukosa		<tkeksa[AT]gmail.com>
 Tomas Kukosa		<tomas.kukosa[AT]ixperta.com>
 Tomas Liscak		<tomas.liscak[AT]nokia.com>
@@ -4742,6 +4751,7 @@ Uri Simchoni		<urisimchoni[AT]gmail.com>
 Uwe Kleine-König	<uwe[AT]kleine-koenig.org>
 Vadim Fedorenko		<vadimjunk[AT]gmail.com>
 Vadim Yanitskiy		<axilirator[AT]gmail.com>
+Vadim Yanitskiy		<vyanitskiy[AT]sysmocom.de>
 ValdikSS		<iam[AT]valdikss.org.ru>
 Valentin Vidic		<Valentin.Vidic[AT]CARNet.hr>
 Vanson Lim		<vlim[AT]cisco.com>
@@ -4756,8 +4766,10 @@ Vikram Hegde		<vikram.h[AT]samsung.com>
 Ville Skyttä		<ville.skytta[AT]iki.fi>
 Vincent Helfre		<vincent.helfre[AT]gmx.net>
 Vincenzo Reale		<smart2128[AT]baslug.org>
+Vivek Pandey		<vivek_pandey[AT]comcast.com>
 Vladimir Kondratiev	<qca_vkondrat[AT]qca.qualcomm.com>
 Vladimir Rutsky		<rutsky[AT]google.com>
+Vladislav Grishenko	<themiron[AT]mail.ru>
 Vladlen Popov		<vladlen.popov[AT]yahoo.com>
 Volker Lendecke		<vl[AT]samba.org>
 Volodymyr Khomenko	<Khomenko.Volodymyr[AT]gmail.com>

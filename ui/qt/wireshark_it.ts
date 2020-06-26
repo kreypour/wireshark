@@ -9554,6 +9554,34 @@ Ad esempio, usa 1 ora per fare in modo che un nuovo file sia creato ogni ora.</t
         <translation>LCID 10</translation>
     </message>
     <message>
+        <source>LCID 32</source>
+        <translation>LCID 32</translation>
+    </message>
+    <message>
+        <source>LCID 33</source>
+        <translation>LCID 33</translation>
+    </message>
+    <message>
+        <source>LCID 34</source>
+        <translation>LCID 34</translation>
+    </message>
+    <message>
+        <source>LCID 35</source>
+        <translation>LCID 35</translation>
+    </message>
+    <message>
+        <source>LCID 36</source>
+        <translation>LCID 36</translation>
+    </message>
+    <message>
+        <source>LCID 37</source>
+        <translation>LCID 37</translation>
+    </message>
+    <message>
+        <source>LCID 38</source>
+        <translation>LCID 38</translation>
+    </message>
+    <message>
         <source>TM</source>
         <translation>TM</translation>
     </message>

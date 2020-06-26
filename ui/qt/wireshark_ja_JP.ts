@@ -986,7 +986,7 @@
     </message>
     <message>
         <source>Section %1</source>
-        <translation type="unfinished"></translation>
+        <translation>セクション %1</translation>
     </message>
     <message>
         <source>Capture</source>
@@ -1086,7 +1086,7 @@
     </message>
     <message>
         <source>Section Comment</source>
-        <translation type="unfinished"></translation>
+        <translation>セクション コメント</translation>
     </message>
     <message>
         <source>Packet Comments</source>
@@ -9528,6 +9528,34 @@ For example, use 1 hour to have a new file created every hour on the hour.</sour
     <message>
         <source>LCID 10</source>
         <translation>LCID 10</translation>
+    </message>
+    <message>
+        <source>LCID 32</source>
+        <translation type="unfinished">LCID 32</translation>
+    </message>
+    <message>
+        <source>LCID 33</source>
+        <translation type="unfinished">LCID 33</translation>
+    </message>
+    <message>
+        <source>LCID 34</source>
+        <translation type="unfinished">LCID 34</translation>
+    </message>
+    <message>
+        <source>LCID 35</source>
+        <translation type="unfinished">LCID 35</translation>
+    </message>
+    <message>
+        <source>LCID 36</source>
+        <translation type="unfinished">LCID 36</translation>
+    </message>
+    <message>
+        <source>LCID 37</source>
+        <translation type="unfinished">LCID 37</translation>
+    </message>
+    <message>
+        <source>LCID 38</source>
+        <translation type="unfinished">LCID 38</translation>
     </message>
     <message>
         <source>TM</source>

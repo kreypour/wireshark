@@ -77,6 +77,7 @@ static gint ett_usb_hid_report = -1;
 static gint ett_usb_hid_item_header = -1;
 static gint ett_usb_hid_wValue = -1;
 static gint ett_usb_hid_descriptor = -1;
+static gint ett_usb_hid_data = -1;
 
 static int hf_usb_hid_request = -1;
 static int hf_usb_hid_value = -1;
@@ -145,6 +146,18 @@ struct usb_hid_global_state {
     unsigned int usage_page;
 };
 
+static wmem_tree_t *report_descriptors = NULL;
+
+typedef struct _report_descriptor report_descriptor_t;
+
+struct _report_descriptor {
+    usb_conv_info_t         usb_info;
+
+    int                     desc_length;
+    guint8                 *desc_body;
+
+    report_descriptor_t    *next;
+};
 
 /* HID class specific descriptor types */
 #define USB_DT_HID        0x21
@@ -226,7 +239,7 @@ static const value_string usb_hid_globalitem_bTag_vals[] = {
     {15, "[Reserved]"},
     {0, NULL}
 };
-#define USBHID_LOCALITEM_TAG_USAGE_PAGE     0
+#define USBHID_LOCALITEM_TAG_USAGE          0
 #define USBHID_LOCALITEM_TAG_USAGE_MIN      1
 #define USBHID_LOCALITEM_TAG_USAGE_MAX      2
 #define USBHID_LOCALITEM_TAG_DESIG_INDEX    3
@@ -238,7 +251,7 @@ static const value_string usb_hid_globalitem_bTag_vals[] = {
 #define USBHID_LOCALITEM_TAG_STRING_MAX     9
 #define USBHID_LOCALITEM_TAG_DELIMITER     10 /* Also listed as reserved in spec! */
 static const value_string usb_hid_localitem_bTag_vals[] = {
-    {USBHID_LOCALITEM_TAG_USAGE_PAGE,   "Usage"},
+    {USBHID_LOCALITEM_TAG_USAGE,        "Usage"},
     {USBHID_LOCALITEM_TAG_USAGE_MIN,    "Usage Minimum"},
     {USBHID_LOCALITEM_TAG_USAGE_MAX,    "Usage Maximum"},
     {USBHID_LOCALITEM_TAG_DESIG_INDEX,  "Designator Index"},
@@ -3180,6 +3193,57 @@ static const value_string keycode_vals[] = {
 };
 value_string_ext keycode_vals_ext = VALUE_STRING_EXT_INIT(keycode_vals);
 
+static gboolean
+is_correct_interface(usb_conv_info_t *info1, usb_conv_info_t *info2)
+{
+    return (info1->bus_id == info2->bus_id) &&
+           (info1->device_address == info2->device_address) &&
+           (info1->interfaceNum == info2->interfaceNum);
+}
+
+/* Returns the report descriptor */
+static report_descriptor_t _U_ *
+get_report_descriptor(packet_info *pinfo _U_, usb_conv_info_t *usb_info)
+{
+    guint32 bus_id = usb_info->bus_id;
+    guint32 device_address = usb_info->device_address;
+    guint32 interface = usb_info->interfaceNum;
+    wmem_tree_key_t key[] = {
+        {1, &bus_id},
+        {1, &device_address},
+        {1, &interface},
+        {1, &pinfo->num},
+        {0, NULL}
+    };
+
+    report_descriptor_t *data = NULL;
+    data = (report_descriptor_t*) wmem_tree_lookup32_array_le(report_descriptors, key);
+    if (data && is_correct_interface(usb_info, &data->usb_info))
+        return data;
+
+    return NULL;
+}
+
+/* Inserts the report descriptor */
+static void
+insert_report_descriptor(packet_info *pinfo, report_descriptor_t *data)
+{
+    guint32 bus_id = data->usb_info.bus_id;
+    guint32 device_address = data->usb_info.device_address;
+    guint32 interface = data->usb_info.interfaceNum;
+    wmem_tree_key_t key[] = {
+        {1, &bus_id},
+        {1, &device_address},
+        {1, &interface},
+        {1, &pinfo->num},
+        {0, NULL}
+    };
+
+    /* only insert report descriptor the first time we parse it */
+    if (!PINFO_FD_VISITED(pinfo))
+        wmem_tree_insert32_array(report_descriptors, key, data);
+}
+
 /* Returns usage page string */
 static const char*
 get_usage_page_string(guint32 usage_page)
@@ -3487,7 +3551,7 @@ dissect_usb_hid_report_localitem_data(packet_info *pinfo _U_, proto_tree *tree, 
     guint32 val;
 
     switch (bTag) {
-        case USBHID_LOCALITEM_TAG_USAGE_PAGE:
+        case USBHID_LOCALITEM_TAG_USAGE:
             if (bSize > 2) {
                 /* Full page ID */
                 proto_tree_add_item(tree, hf_usb_hid_localitem_usage, tvb, offset, bSize, ENC_LITTLE_ENDIAN);
@@ -3650,6 +3714,7 @@ dissect_usb_hid_get_report_descriptor(packet_info *pinfo _U_, proto_tree *parent
     proto_tree *tree;
     int old_offset=offset;
     struct usb_hid_global_state initial_global;
+    report_descriptor_t *data = wmem_new(wmem_file_scope(), report_descriptor_t);
 
     memset(&initial_global, 0, sizeof(struct usb_hid_global_state));
 
@@ -3657,6 +3722,13 @@ dissect_usb_hid_get_report_descriptor(packet_info *pinfo _U_, proto_tree *parent
                                           -1, "HID Report");
     tree = proto_item_add_subtree(item, ett_usb_hid_report);
     offset = dissect_usb_hid_report_item(pinfo, tree, tvb, offset, usb_conv_info, &initial_global);
+
+    if (usb_conv_info) {
+        data->usb_info = *usb_conv_info;
+        data->desc_length = offset - old_offset;
+        data->desc_body = (guint8*) tvb_memdup(wmem_file_scope(), tvb, old_offset, data->desc_length);
+        insert_report_descriptor(pinfo, data);
+    }
 
     proto_item_set_len(item, offset-old_offset);
 
@@ -4227,6 +4299,24 @@ dissect_usb_hid_control_class_intf(tvbuff_t *tvb, packet_info *pinfo,
     return tvb_captured_length(tvb);
 }
 
+/* Dissect USB HID data/reports */
+static gint
+dissect_usb_hid_data(tvbuff_t *tvb, packet_info *pinfo _U_, proto_tree *tree, void *data _U_)
+{
+    guint offset = 0;
+    proto_item *hid_ti;
+    proto_tree _U_ *hid_tree;
+    guint remaining = tvb_reported_length_remaining(tvb, offset);
+
+    if (remaining) {
+        hid_ti = proto_tree_add_item(tree, hf_usbhid_data, tvb, offset, -1, ENC_NA);
+        hid_tree = proto_item_add_subtree(hid_ti, ett_usb_hid_data);
+        offset += remaining;
+    }
+
+    return offset;
+}
+
 /* Dissector for HID class-specific control request as defined in
  * USBHID 1.11, Chapter 7.2.
  * returns the number of bytes consumed */
@@ -4254,7 +4344,7 @@ dissect_usb_hid_control(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, voi
             return dissect_usb_hid_control_class_intf(tvb, pinfo, tree, usb_conv_info);
     }
 
-    return 0;
+    return dissect_usb_hid_data(tvb, pinfo, tree, data);
 }
 
 /* dissect a descriptor that is specific to the HID class */
@@ -4699,7 +4789,7 @@ proto_register_usb_hid(void)
                 NULL, 0x00, NULL, HFILL }},
 
         { &hf_usbhid_data,
-            { "Data", "usbhid.data", FT_NONE, BASE_NONE,
+            { "HID Data", "usbhid.data", FT_BYTES, BASE_NONE,
                 NULL, 0x00, NULL, HFILL }},
     };
 
@@ -4707,8 +4797,11 @@ proto_register_usb_hid(void)
         &ett_usb_hid_report,
         &ett_usb_hid_item_header,
         &ett_usb_hid_wValue,
-        &ett_usb_hid_descriptor
+        &ett_usb_hid_descriptor,
+        &ett_usb_hid_data
     };
+
+    report_descriptors = wmem_tree_new_autoreset(wmem_epan_scope(), wmem_file_scope());
 
     proto_usb_hid = proto_register_protocol("USB HID", "USBHID", "usbhid");
     proto_register_field_array(proto_usb_hid, hf, array_length(hf));
@@ -4723,16 +4816,16 @@ proto_register_usb_hid(void)
 void
 proto_reg_handoff_usb_hid(void)
 {
-    dissector_handle_t usb_hid_control_handle, usb_hid_descr_handle;
+    dissector_handle_t usb_hid_control_handle, usb_hid_interrupt_handle, usb_hid_descr_handle;
 
-    usb_hid_control_handle = create_dissector_handle(
-                        dissect_usb_hid_control, proto_usb_hid);
+    usb_hid_control_handle = create_dissector_handle(dissect_usb_hid_control, proto_usb_hid);
     dissector_add_uint("usb.control", IF_CLASS_HID, usb_hid_control_handle);
-
     dissector_add_for_decode_as("usb.device", usb_hid_control_handle);
 
-    usb_hid_descr_handle = create_dissector_handle(
-                        dissect_usb_hid_class_descriptors, proto_usb_hid);
+    usb_hid_interrupt_handle = create_dissector_handle(dissect_usb_hid_data, proto_usb_hid);
+    dissector_add_uint("usb.interrupt", IF_CLASS_HID, usb_hid_interrupt_handle);
+
+    usb_hid_descr_handle = create_dissector_handle(dissect_usb_hid_class_descriptors, proto_usb_hid);
     dissector_add_uint("usb.descriptor", IF_CLASS_HID, usb_hid_descr_handle);
 }
 

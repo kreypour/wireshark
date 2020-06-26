@@ -1843,6 +1843,7 @@ static int hf_bgp_evpn_nlri_esi_reserved = -1;
 static int hf_bgp_evpn_nlri_etag = -1;
 static int hf_bgp_evpn_nlri_mpls_ls1 = -1;
 static int hf_bgp_evpn_nlri_mpls_ls2 = -1;
+static int hf_bgp_evpn_nlri_vni = -1;
 static int hf_bgp_evpn_nlri_maclen = -1;
 static int hf_bgp_evpn_nlri_mac_addr = -1;
 static int hf_bgp_evpn_nlri_iplen = -1;
@@ -1861,7 +1862,7 @@ static int hf_bgp_evpn_nlri_igmp_mc_flags_v3 = -1;
 static int hf_bgp_evpn_nlri_igmp_mc_flags_ie = -1;
 static int hf_bgp_evpn_nlri_igmp_mc_flags_reserved = -1;
 
-static const int *evpn_nlri_igmp_mc_flags[] = {
+static int * const evpn_nlri_igmp_mc_flags[] = {
        &hf_bgp_evpn_nlri_igmp_mc_flags_v1,
        &hf_bgp_evpn_nlri_igmp_mc_flags_v2,
        &hf_bgp_evpn_nlri_igmp_mc_flags_v3,
@@ -2421,7 +2422,7 @@ static int hf_bgp_ls_igp_te_metric_bandwidth_utilized = -1;
 static int hf_bgp_ls_igp_te_metric_bandwidth_utilized_value = -1;
 static int hf_bgp_ls_igp_te_metric_reserved = -1;
 
-static const int *ls_igp_te_metric_flags[] = {
+static int * const ls_igp_te_metric_flags[] = {
        &hf_bgp_ls_igp_te_metric_flags_a,
        &hf_bgp_ls_igp_te_metric_flags_reserved,
        NULL
@@ -2596,6 +2597,35 @@ static link_state_data*
 load_link_state_data(packet_info *pinfo) {
     link_state_data *data =
         (link_state_data*)p_get_proto_data(pinfo->pool, pinfo, proto_bgp, LINK_STATE_DATA_KEY);
+    return data;
+}
+
+typedef struct _path_attr_data {
+    gboolean encaps_community_present;
+    guint16 encaps_tunnel_type;
+} path_attr_data;
+
+#define PATH_ATTR_DATA_KEY 1
+
+static void
+save_path_attr_encaps_tunnel_type(packet_info *pinfo, guint32 encaps_tunnel_type) {
+    path_attr_data *data =
+        (path_attr_data*)p_get_proto_data(pinfo->pool, pinfo, proto_bgp, PATH_ATTR_DATA_KEY);
+    if (!data) {
+        data = wmem_new0(pinfo->pool, path_attr_data);
+        data->encaps_tunnel_type = 0;
+        data->encaps_community_present = FALSE;
+    }
+    data->encaps_community_present = TRUE;
+    data->encaps_tunnel_type = encaps_tunnel_type;
+    p_add_proto_data(pinfo->pool, pinfo, proto_bgp, PATH_ATTR_DATA_KEY, data);
+    return;
+}
+
+static path_attr_data*
+load_path_attr_data(packet_info *pinfo) {
+    path_attr_data *data =
+        (path_attr_data*)p_get_proto_data(pinfo->pool, pinfo, proto_bgp, PATH_ATTR_DATA_KEY);
     return data;
 }
 
@@ -2931,7 +2961,7 @@ decode_mcast_vpn_nlri_addresses(proto_tree *tree, tvbuff_t *tvb,
 static void
 decode_bgp_flow_spec_dec_operator(proto_tree *tree, tvbuff_t *tvb, gint offset)
 {
-    static const int * flags[] = {
+    static int * const flags[] = {
         &hf_bgp_flowspec_nlri_op_eol,
         &hf_bgp_flowspec_nlri_op_and,
         &hf_bgp_flowspec_nlri_op_val_len,
@@ -3021,7 +3051,7 @@ decode_bgp_nlri_op_dec_value(proto_tree *parent_tree, proto_item *parent_item, t
 static void
 decode_bgp_flow_spec_bitmask_operator(proto_tree *tree, tvbuff_t *tvb, gint offset)
 {
-    static const int * flags[] = {
+    static int * const flags[] = {
         &hf_bgp_flowspec_nlri_op_eol,
         &hf_bgp_flowspec_nlri_op_and,
         &hf_bgp_flowspec_nlri_op_val_len,
@@ -3048,7 +3078,7 @@ decode_bgp_nlri_op_tcpf_value(proto_tree *parent_tree, proto_item *parent_item, 
     guint8 shift_amount=0;
     guint first_loop=0;
 
-    static const int * nlri_tcp_flags[] = {
+    static int * const nlri_tcp_flags[] = {
         &hf_bgp_flowspec_nlri_tcp_flags_cwr,
         &hf_bgp_flowspec_nlri_tcp_flags_ecn,
         &hf_bgp_flowspec_nlri_tcp_flags_urg,
@@ -3121,7 +3151,7 @@ decode_bgp_nlri_op_fflag_value(proto_tree *parent_tree, proto_item *parent_item,
     guint8 shift_amount=0;
     guint first_loop=0;
 
-    static const int * nlri_flags[] = {
+    static int * const nlri_flags[] = {
         &hf_bgp_flowspec_nlri_fflag_lf,
         &hf_bgp_flowspec_nlri_fflag_ff,
         &hf_bgp_flowspec_nlri_fflag_isf,
@@ -3810,6 +3840,7 @@ mp_addr_to_str (guint16 afi, guint8 safi, tvbuff_t *tvb, gint offset, wmem_strbu
                 case SAFNUM_LAB_VPNMULCAST:
                 case SAFNUM_LAB_VPNUNIMULC:
                 case SAFNUM_VPLS:
+                case SAFNUM_EVPN:
                     length = 4; /* the next-hop is simply an ipv4 addr */
                     wmem_strbuf_append_printf(strbuf, "IPv4=%s",
                                               tvb_ip_to_str(tvb, offset));
@@ -4308,7 +4339,7 @@ decode_link_state_attribute_tlv(proto_tree *tree, tvbuff_t *tvb, gint offset, pa
 
         case BGP_NLRI_TLV_NODE_FLAG_BITS:
             {
-            static const int * flags[] = {
+            static int * const flags[] = {
                 &hf_bgp_ls_node_flag_bits_overload,
                 &hf_bgp_ls_node_flag_bits_attached,
                 &hf_bgp_ls_node_flag_bits_external,
@@ -4365,7 +4396,7 @@ decode_link_state_attribute_tlv(proto_tree *tree, tvbuff_t *tvb, gint offset, pa
                   |I |V |H |  |  |  |  |  |
                   +--+--+--+--+--+--+--+--+
                 */
-                static const int *sr_capabilities_flags[] = {
+                static int * const sr_capabilities_flags[] = {
                     &hf_bgp_ls_sr_tlv_capabilities_flags_i,
                     &hf_bgp_ls_sr_tlv_capabilities_flags_v,
                     &hf_bgp_ls_sr_tlv_capabilities_flags_h,
@@ -4587,7 +4618,7 @@ decode_link_state_attribute_tlv(proto_tree *tree, tvbuff_t *tvb, gint offset, pa
                 break;
             }
             else {
-                static const int * nlri_flags[] = {
+                static int * const nlri_flags[] = {
                     &hf_bgp_ls_link_protection_type_extra_traffic,
                     &hf_bgp_ls_link_protection_type_unprotected,
                     &hf_bgp_ls_link_protection_type_shared,
@@ -4614,7 +4645,7 @@ decode_link_state_attribute_tlv(proto_tree *tree, tvbuff_t *tvb, gint offset, pa
             break;
         case BGP_NLRI_TLV_MPLS_PROTOCOL_MASK:
             {
-            static const int * flags[] = {
+            static int * const flags[] = {
                 &hf_bgp_ls_mpls_protocol_mask_flag_l,
                 &hf_bgp_ls_mpls_protocol_mask_flag_r,
                 NULL
@@ -4703,7 +4734,7 @@ decode_link_state_attribute_tlv(proto_tree *tree, tvbuff_t *tvb, gint offset, pa
                   |F |B |V |L |S |  |  |  |
                   +--+--+--+--+--+--+--+--+
                 */
-                static const int *adj_sid_isis_flags[] = {
+                static int * const adj_sid_isis_flags[] = {
                     &hf_bgp_ls_sr_tlv_adjacency_sid_flags_fi,
                     &hf_bgp_ls_sr_tlv_adjacency_sid_flags_bi,
                     &hf_bgp_ls_sr_tlv_adjacency_sid_flags_vi,
@@ -4717,7 +4748,7 @@ decode_link_state_attribute_tlv(proto_tree *tree, tvbuff_t *tvb, gint offset, pa
                   |B |V |L |S |  |  |  |  |
                   +--+--+--+--+--+--+--+--+
                 */
-                static const int *adj_sid_ospf_flags[] = {
+                static int * const adj_sid_ospf_flags[] = {
                     &hf_bgp_ls_sr_tlv_adjacency_sid_flags_bo,
                     &hf_bgp_ls_sr_tlv_adjacency_sid_flags_vo,
                     &hf_bgp_ls_sr_tlv_adjacency_sid_flags_lo,
@@ -4859,7 +4890,7 @@ decode_link_state_attribute_tlv(proto_tree *tree, tvbuff_t *tvb, gint offset, pa
                   |R |N |P |E |V |L |  |  |
                   +--+--+--+--+--+--+--+--+
                 */
-                static const int *prefix_sid_isis_flags[] = {
+                static int * const prefix_sid_isis_flags[] = {
                     &hf_bgp_ls_sr_tlv_prefix_sid_flags_r,
                     &hf_bgp_ls_sr_tlv_prefix_sid_flags_n,
                     &hf_bgp_ls_sr_tlv_prefix_sid_flags_p,
@@ -4874,7 +4905,7 @@ decode_link_state_attribute_tlv(proto_tree *tree, tvbuff_t *tvb, gint offset, pa
                   |  |NP|M |E |V |L |  |  |
                   +--+--+--+--+--+--+--+--+
                 */
-                static const int *prefix_sid_ospf_flags[] = {
+                static int * const prefix_sid_ospf_flags[] = {
                     &hf_bgp_ls_sr_tlv_prefix_sid_flags_np,
                     &hf_bgp_ls_sr_tlv_prefix_sid_flags_m,
                     &hf_bgp_ls_sr_tlv_prefix_sid_flags_e,
@@ -5043,6 +5074,7 @@ static int decode_evpn_nlri(proto_tree *tree, tvbuff_t *tvb, gint offset, packet
     guint8 ip_len;
     guint32 total_length = 0;
     guint32 or_length;
+    path_attr_data *data = NULL;
     proto_item *item;
     int ret;
 
@@ -5094,8 +5126,15 @@ static int decode_evpn_nlri(proto_tree *tree, tvbuff_t *tvb, gint offset, packet
         proto_tree_add_item(prefix_tree, hf_bgp_evpn_nlri_etag, tvb, reader_offset,
                                    4, ENC_BIG_ENDIAN);
         reader_offset += 4;
-        proto_tree_add_item(prefix_tree, hf_bgp_evpn_nlri_mpls_ls1, tvb, reader_offset, 3, ENC_BIG_ENDIAN);
-        reader_offset += 3;
+        data = load_path_attr_data(pinfo);
+        if (data && data->encaps_community_present &&
+                (data->encaps_tunnel_type == BGP_EXT_COM_TUNNEL_VXLAN || data->encaps_tunnel_type == BGP_EXT_COM_TUNNEL_VXLANGPE)) {
+            proto_tree_add_item(prefix_tree, hf_bgp_evpn_nlri_vni, tvb, reader_offset, 3, ENC_BIG_ENDIAN);
+            reader_offset += 3;
+        } else {
+            proto_tree_add_item(prefix_tree, hf_bgp_evpn_nlri_mpls_ls1, tvb, reader_offset, 3, ENC_BIG_ENDIAN);
+            reader_offset += 3;
+        }
         total_length = reader_offset - offset;
         break;
 
@@ -5179,13 +5218,24 @@ static int decode_evpn_nlri(proto_tree *tree, tvbuff_t *tvb, gint offset, packet
         } else {
             return -1;
         }
-        proto_tree_add_item(prefix_tree, hf_bgp_evpn_nlri_mpls_ls1, tvb, reader_offset, 3, ENC_BIG_ENDIAN);
-        reader_offset += 3;
-        /* we check if we reached the end of the nlri reading fields one by one */
-        /* if not, the second optional label is in the payload */
-        if (reader_offset - start_offset < nlri_len) {
-            proto_tree_add_item(prefix_tree, hf_bgp_evpn_nlri_mpls_ls2, tvb, reader_offset, 3, ENC_BIG_ENDIAN);
+        data = load_path_attr_data(pinfo);
+        if (data && data->encaps_community_present &&
+                (data->encaps_tunnel_type == BGP_EXT_COM_TUNNEL_VXLAN || data->encaps_tunnel_type == BGP_EXT_COM_TUNNEL_VXLANGPE)) {
+            proto_tree_add_item(prefix_tree, hf_bgp_evpn_nlri_vni, tvb, reader_offset, 3, ENC_BIG_ENDIAN);
             reader_offset += 3;
+            if (reader_offset - start_offset < nlri_len) {
+                proto_tree_add_item(prefix_tree, hf_bgp_evpn_nlri_vni, tvb, reader_offset, 3, ENC_BIG_ENDIAN);
+                reader_offset += 3;
+            }
+        } else {
+            proto_tree_add_item(prefix_tree, hf_bgp_evpn_nlri_mpls_ls1, tvb, reader_offset, 3, ENC_BIG_ENDIAN);
+            reader_offset += 3;
+            /* we check if we reached the end of the nlri reading fields one by one */
+            /* if not, the second optional label is in the payload */
+            if (reader_offset - start_offset < nlri_len) {
+                proto_tree_add_item(prefix_tree, hf_bgp_evpn_nlri_mpls_ls2, tvb, reader_offset, 3, ENC_BIG_ENDIAN);
+                reader_offset += 3;
+            }
         }
         total_length = reader_offset - offset;
         break;
@@ -5365,7 +5415,13 @@ static int decode_evpn_nlri(proto_tree *tree, tvbuff_t *tvb, gint offset, packet
                                     4, ENC_NA);
                 reader_offset += 4;
 
-                decode_MPLS_stack_tree(tvb, reader_offset, prefix_tree);
+                data = load_path_attr_data(pinfo);
+                if (data && data->encaps_community_present &&
+                        (data->encaps_tunnel_type == BGP_EXT_COM_TUNNEL_VXLAN || data->encaps_tunnel_type == BGP_EXT_COM_TUNNEL_VXLANGPE)) {
+                    proto_tree_add_item(prefix_tree, hf_bgp_evpn_nlri_vni, tvb, reader_offset, 3, ENC_BIG_ENDIAN);
+                } else {
+                    decode_MPLS_stack_tree(tvb, reader_offset, prefix_tree);
+                }
                 total_length = 36;
                 break;
             case 58 :
@@ -5378,7 +5434,13 @@ static int decode_evpn_nlri(proto_tree *tree, tvbuff_t *tvb, gint offset, packet
                                     16, ENC_NA);
                 reader_offset += 16;
 
-                decode_MPLS_stack_tree(tvb, reader_offset, prefix_tree);
+                data = load_path_attr_data(pinfo);
+                if (data && data->encaps_community_present &&
+                        (data->encaps_tunnel_type == BGP_EXT_COM_TUNNEL_VXLAN || data->encaps_tunnel_type == BGP_EXT_COM_TUNNEL_VXLANGPE)) {
+                    proto_tree_add_item(prefix_tree, hf_bgp_evpn_nlri_vni, tvb, reader_offset, 3, ENC_BIG_ENDIAN);
+                } else {
+                    decode_MPLS_stack_tree(tvb, reader_offset, prefix_tree);
+                }
                 total_length = 60;
                 break;
             default :
@@ -6360,7 +6422,7 @@ dissect_bgp_capability_item(tvbuff_t *tvb, proto_tree *tree, packet_info *pinfo,
             else {
                 int eclen = offset + clen;
 
-                static const int * timer_flags[] = {
+                static int * const timer_flags[] = {
                     &hf_bgp_cap_gr_timers_restart_flag,
                     &hf_bgp_cap_gr_timers_notification_flag,
                     &hf_bgp_cap_gr_timers_restart_time,
@@ -6380,7 +6442,7 @@ dissect_bgp_capability_item(tvbuff_t *tvb, proto_tree *tree, packet_info *pinfo,
                  * read it until the TLV ends
                  */
                 while (offset < eclen) {
-                    static const int * flags[] = {
+                    static int * const flags[] = {
                         &hf_bgp_cap_gr_flag_pfs,
                         NULL
                     };
@@ -6532,7 +6594,7 @@ dissect_bgp_capability_item(tvbuff_t *tvb, proto_tree *tree, packet_info *pinfo,
                 offset += clen;
             }
             else {
-                static const int * bgpsec_flags[] = {
+                static int * const bgpsec_flags[] = {
                     &hf_bgp_cap_bgpsec_version,
                     &hf_bgp_cap_bgpsec_sendreceive,
                     &hf_bgp_cap_bgpsec_reserved,
@@ -6773,7 +6835,7 @@ heuristic_as2_or_4_from_as_path(tvbuff_t *tvb, gint as_path_offset, gint end_att
  */
 
 static int
-dissect_bgp_update_ext_com(proto_tree *parent_tree, tvbuff_t *tvb, guint16 tlen, guint tvb_off)
+dissect_bgp_update_ext_com(proto_tree *parent_tree, tvbuff_t *tvb, guint16 tlen, guint tvb_off, packet_info *pinfo)
 {
     int             offset=0;
     int             end=0;
@@ -6785,6 +6847,7 @@ dissect_bgp_update_ext_com(proto_tree *parent_tree, tvbuff_t *tvb, guint16 tlen,
     proto_item      *communities_item=NULL;
     proto_item      *community_item=NULL;
     proto_item      *community_type_item=NULL;
+    guint32         encaps_tunnel_type;
 
     offset = tvb_off ;
     end = tvb_off + tlen ;
@@ -6977,7 +7040,8 @@ dissect_bgp_update_ext_com(proto_tree *parent_tree, tvbuff_t *tvb, guint16 tlen,
 
                     case BGP_EXT_COM_STYPE_OPA_ENCAP:
                         /* Community octets 2 through 5 are reserved and carry no useful value according to RFC 5512. */
-                        proto_tree_add_item(community_tree, hf_bgp_ext_com_tunnel_type, tvb, offset+6, 2, ENC_BIG_ENDIAN);
+                        proto_tree_add_item_ret_uint(community_tree, hf_bgp_ext_com_tunnel_type, tvb, offset+6, 2, ENC_BIG_ENDIAN, &encaps_tunnel_type);
+                        save_path_attr_encaps_tunnel_type(pinfo, encaps_tunnel_type);
 
                         proto_item_append_text(community_item, " %s",
                                 val_to_str_const(tvb_get_ntohs(tvb,offset+6), bgpext_com_tunnel_type, "Unknown"));
@@ -7050,7 +7114,7 @@ dissect_bgp_update_ext_com(proto_tree *parent_tree, tvbuff_t *tvb, guint16 tlen,
             case BGP_EXT_COM_TYPE_HIGH_TR_QOS: /* QoS Marking [Thomas_Martin_Knoll] */
             case BGP_EXT_COM_TYPE_HIGH_NTR_QOS: /* QoS Marking [Thomas_Martin_Knoll] */
                 {
-                static const int * qos_flags[] = {
+                static int * const qos_flags[] = {
                     &hf_bgp_ext_com_qos_flags_remarking,
                     &hf_bgp_ext_com_qos_flags_ignore_remarking,
                     &hf_bgp_ext_com_qos_flags_agg_marking,
@@ -7077,7 +7141,7 @@ dissect_bgp_update_ext_com(proto_tree *parent_tree, tvbuff_t *tvb, guint16 tlen,
                 proto_item_set_text(community_item, "CoS Capability");
 
                 for (i=1; i < 8; i++) {
-                    static const int * cos_flags[] = {
+                    static int * const cos_flags[] = {
                         &hf_bgp_ext_com_cos_flags_be,
                         &hf_bgp_ext_com_cos_flags_ef,
                         &hf_bgp_ext_com_cos_flags_af,
@@ -7148,7 +7212,7 @@ dissect_bgp_update_ext_com(proto_tree *parent_tree, tvbuff_t *tvb, guint16 tlen,
 
                     case BGP_EXT_COM_STYPE_EVPN_L2ATTR:
                         {
-                        static const int *l2attr_flags[] = {
+                        static int * const l2attr_flags[] = {
                             &hf_bgp_ext_com_evpn_l2attr_flag_reserved,
                             &hf_bgp_ext_com_evpn_l2attr_flag_ci,
                             &hf_bgp_ext_com_evpn_l2attr_flag_f,
@@ -7169,7 +7233,7 @@ dissect_bgp_update_ext_com(proto_tree *parent_tree, tvbuff_t *tvb, guint16 tlen,
 
                     case BGP_EXT_COM_STYPE_EVPN_ETREE:
                         {
-                        static const int *etree_flags[] = {
+                        static int * const etree_flags[] = {
                             &hf_bgp_ext_com_evpn_etree_flag_reserved,
                             &hf_bgp_ext_com_evpn_etree_flag_l,
                             NULL
@@ -7284,7 +7348,7 @@ dissect_bgp_update_ext_com(proto_tree *parent_tree, tvbuff_t *tvb, guint16 tlen,
 
                     case BGP_EXT_COM_STYPE_EXP_L2:
                         {
-                        static const int * com_l2_flags[] = {
+                        static int * const com_l2_flags[] = {
                             &hf_bgp_ext_com_l2_flag_d,
                             &hf_bgp_ext_com_l2_flag_z1,
                             &hf_bgp_ext_com_l2_flag_f,
@@ -7303,7 +7367,7 @@ dissect_bgp_update_ext_com(proto_tree *parent_tree, tvbuff_t *tvb, guint16 tlen,
 
                     case BGP_EXT_COM_STYPE_EXP_ETREE:
                         {
-                        static const int * com_etree_flags[] = {
+                        static int * const com_etree_flags[] = {
                             &hf_bgp_ext_com_etree_flag_reserved,
                             &hf_bgp_ext_com_etree_flag_p,
                             &hf_bgp_ext_com_etree_flag_v,
@@ -7527,6 +7591,7 @@ dissect_bgp_update_pmsi_attr(packet_info *pinfo, proto_tree *parent_tree, tvbuff
     proto_item      *opaque_value_type_item=NULL;
     proto_item      *pmsi_tunnel_type_item=NULL;
     proto_tree      *tunnel_id_tree=NULL;
+    path_attr_data  *data = NULL;
 
     offset = tvb_off ;
     tunnel_id_len = tlen - 5;
@@ -7537,7 +7602,13 @@ dissect_bgp_update_pmsi_attr(packet_info *pinfo, proto_tree *parent_tree, tvbuff
     pmsi_tunnel_type_item = proto_tree_add_item(parent_tree, hf_bgp_pmsi_tunnel_type, tvb, offset+1,
                                                 1, ENC_BIG_ENDIAN);
 
-    proto_tree_add_item(parent_tree, hf_bgp_update_mpls_label_value_20bits, tvb, offset+2, 3, ENC_BIG_ENDIAN);
+    data = load_path_attr_data(pinfo);
+    if (data && data->encaps_community_present &&
+            (data->encaps_tunnel_type == BGP_EXT_COM_TUNNEL_VXLAN || data->encaps_tunnel_type == BGP_EXT_COM_TUNNEL_VXLANGPE)) {
+        proto_tree_add_item(parent_tree, hf_bgp_evpn_nlri_vni, tvb, offset+2, 3, ENC_BIG_ENDIAN);
+    } else {
+        proto_tree_add_item(parent_tree, hf_bgp_update_mpls_label_value_20bits, tvb, offset+2, 3, ENC_BIG_ENDIAN);
+    }
 
     tunnel_id_item = proto_tree_add_item(parent_tree, hf_bgp_pmsi_tunnel_id, tvb, offset+5,
                         tunnel_id_len, ENC_NA);
@@ -7696,7 +7767,7 @@ dissect_bgp_path_attr(proto_tree *subtree, tvbuff_t *tvb, guint16 path_attr_len,
         guint8  asn_len = 0;
         guint32 as_num;
 
-        static const int * path_flags[] = {
+        static int * const path_flags[] = {
             &hf_bgp_update_path_attribute_flags_optional,
             &hf_bgp_update_path_attribute_flags_transitive,
             &hf_bgp_update_path_attribute_flags_partial,
@@ -8182,7 +8253,7 @@ dissect_bgp_path_attr(proto_tree *subtree, tvbuff_t *tvb, guint16 path_attr_len,
                     expert_add_info_format(pinfo, attr_len_item, &ei_bgp_ext_com_len_bad,
                                            "Community length %u wrong, must be modulo 8", tlen);
                 } else {
-                    dissect_bgp_update_ext_com(subtree2, tvb, tlen, o+i+aoff);
+                    dissect_bgp_update_ext_com(subtree2, tvb, tlen, o+i+aoff, pinfo);
                 }
                 break;
             case BGPTYPE_SAFI_SPECIFIC_ATTR:
@@ -8299,19 +8370,19 @@ dissect_bgp_path_attr(proto_tree *subtree, tvbuff_t *tvb, guint16 path_attr_len,
                         switch (encaps_tunnel_subtype) {
                             case TUNNEL_SUBTLV_ENCAPSULATION:
                                 {
-                                static const int * vxlan_flags[] = {
+                                static int * const vxlan_flags[] = {
                                     &hf_bgp_update_encaps_tunnel_subtlv_vxlan_flags_valid_vnid,
                                     &hf_bgp_update_encaps_tunnel_subtlv_vxlan_flags_valid_mac,
                                     &hf_bgp_update_encaps_tunnel_subtlv_vxlan_flags_reserved,
                                     NULL
                                     };
-                                static const int * vxlan_gpe_flags[] = {
+                                static int * const vxlan_gpe_flags[] = {
                                     &hf_bgp_update_encaps_tunnel_subtlv_vxlan_gpe_flags_version,
                                     &hf_bgp_update_encaps_tunnel_subtlv_vxlan_gpe_flags_valid_vnid,
                                     &hf_bgp_update_encaps_tunnel_subtlv_vxlan_gpe_flags_reserved,
                                     NULL
                                     };
-                                static const int * nvgre_flags[] = {
+                                static int * const nvgre_flags[] = {
                                     &hf_bgp_update_encaps_tunnel_subtlv_nvgre_flags_valid_vnid,
                                     &hf_bgp_update_encaps_tunnel_subtlv_nvgre_flags_valid_mac,
                                     &hf_bgp_update_encaps_tunnel_subtlv_nvgre_flags_reserved,
@@ -8382,7 +8453,7 @@ dissect_bgp_path_attr(proto_tree *subtree, tvbuff_t *tvb, guint16 path_attr_len,
                                 break;
                             case TUNNEL_SUBTLV_BINDING_SID:
                                 {
-                                static const int * flags[] = {
+                                static int * const flags[] = {
                                     &hf_bgp_update_encaps_tunnel_subtlv_binding_sid_flags_specified,
                                     &hf_bgp_update_encaps_tunnel_subtlv_binding_sid_flags_invalid,
                                     &hf_bgp_update_encaps_tunnel_subtlv_binding_sid_flags_reserved,
@@ -8418,7 +8489,7 @@ dissect_bgp_path_attr(proto_tree *subtree, tvbuff_t *tvb, guint16 path_attr_len,
                                 break;
                             case TUNNEL_SUBTLV_SEGMENT_LIST:
                                 {
-                                static const int * flags[] = {
+                                static int * const flags[] = {
                                     &hf_bgp_update_encaps_tunnel_subtlv_segment_list_subtlv_flags_verification,
                                     &hf_bgp_update_encaps_tunnel_subtlv_segment_list_subtlv_flags_algorithm,
                                     &hf_bgp_update_encaps_tunnel_subtlv_segment_list_subtlv_flags_reserved,
@@ -11221,6 +11292,9 @@ proto_register_bgp(void)
       { &hf_bgp_evpn_nlri_mpls_ls2,
         { "MPLS Label 2", "bgp.evpn.nlri.mpls_ls2", FT_UINT24,
           BASE_DEC, NULL, BGP_MPLS_LABEL, NULL, HFILL}},
+      { &hf_bgp_evpn_nlri_vni,
+        { "VNI", "bgp.evpn.nlri.vni", FT_UINT24,
+          BASE_DEC, NULL, 0x0, NULL, HFILL}},
       { &hf_bgp_evpn_nlri_maclen,
        { "MAC Address Length", "bgp.evpn.nlri.maclen", FT_UINT8,
           BASE_DEC, NULL, 0x0, NULL, HFILL}},

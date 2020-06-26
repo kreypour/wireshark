@@ -261,6 +261,7 @@ typedef struct {
     nghttp2_hd_inflater *hd_inflater[2];
     http2_header_repr_info_t header_repr_info[2];
     wmem_map_t *per_stream_info;
+    gboolean    fix_dynamic_table[2];
 #endif
     guint32 current_stream_id;
     tcp_flow_t *fwd_flow;
@@ -1065,6 +1066,7 @@ static const value_string http2_type_vals[] = {
 #define HTTP2_HEADER_TRANSFER_ENCODING "transfer-encoding"
 #define HTTP2_HEADER_PATH ":path"
 #define HTTP2_HEADER_CONTENT_TYPE "content-type"
+#define HTTP2_HEADER_UNKNOWN "<unknown>"
 
 /* header matching helpers */
 #define IS_HTTP2_END_STREAM(flags)   (flags & HTTP2_FLAGS_END_STREAM)
@@ -1186,6 +1188,10 @@ get_http2_session(packet_info *pinfo, conversation_t* conversation)
         h2session->per_stream_info = wmem_map_new(wmem_file_scope(),
                                                   g_direct_hash,
                                                   g_direct_equal);
+        /* Unless found otherwise, assume that some earlier Header Block
+         * Fragments were missing and that recovery should be attempted. */
+        h2session->fix_dynamic_table[0] = TRUE;
+        h2session->fix_dynamic_table[1] = TRUE;
 #endif
 
         h2session->fwd_flow = tcpd->fwd;
@@ -1593,7 +1599,9 @@ populate_http_header_tracking(tvbuff_t *tvb, packet_info *pinfo, http2_session_t
 
     /* Was this header used to initiate transfer of data frames? We'll use this later for reassembly */
     if (strcmp(header_name, HTTP2_HEADER_STATUS) == 0 ||
-                strcmp(header_name, HTTP2_HEADER_METHOD) == 0) {
+                strcmp(header_name, HTTP2_HEADER_METHOD) == 0 ||
+                /* If we are in the middle of a stream assume there might be data transfer */
+                strcmp(header_name, HTTP2_HEADER_UNKNOWN) == 0){
         http2_data_stream_reassembly_info_t *reassembly_info = get_data_reassembly_info(pinfo, h2session);
         if (reassembly_info->data_initiated_in == 0) {
             reassembly_info->data_initiated_in = get_http2_frame_num(tvb, pinfo);
@@ -1672,6 +1680,77 @@ try_add_named_header_field(proto_tree *tree, tvbuff_t *tvb, int offset, guint32 
     }
 }
 
+#if NGHTTP2_VERSION_NUM < 0x010B00  /* 1.11.0 */
+static inline ssize_t nghttp2_hd_inflate_hd2(nghttp2_hd_inflater *inflater,
+                                             nghttp2_nv *nv_out,
+                                             int *inflate_flags,
+                                             const uint8_t *in, size_t inlen,
+                                             int in_final)
+{
+DIAG_OFF(cast-qual)
+    uint8_t *in_buf = (uint8_t *)in;
+DIAG_ON(cast-qual)
+    return nghttp2_hd_inflate_hd(inflater, nv_out, inflate_flags, in_buf, inlen,
+                                 in_final);
+}
+#endif
+
+static void
+fix_partial_header_dissection_support(nghttp2_hd_inflater *hd_inflater, gboolean *fix_it)
+{
+    /* Workaround is not necessary or has already been applied, skip. */
+    if (!*fix_it) {
+        return;
+    }
+    *fix_it = FALSE;
+
+    /* Sanity-check: the workaround should fill an empty dynamic table only and
+     * not evict existing entries. It is expected to be empty given that this is
+     * the first time processing headers, but double-check just to be sure.
+     */
+    if (nghttp2_hd_inflate_get_dynamic_table_size(hd_inflater) != 0) {
+        // Dynamic table is non-empty, do not touch it!
+        return;
+    }
+
+    /* Support dissection of headers where the capture starts in the middle of a
+     * TCP stream. In that case, the Headers Block Fragment might reference
+     * earlier dynamic table entries unknown to the decompressor. To avoid a
+     * fatal error that breaks all future header dissection in this connection,
+     * populate the dynamic table with some dummy entries.
+     * See also https://github.com/nghttp2/nghttp2/issues/1389
+     *
+     * The number of entries in the dynamic table is dependent on the maximum
+     * table size (SETTINGS_HEADER_TABLE_SIZE, defaults to 4096 bytes) and the
+     * size of individual entries (32 + name length + value length where 32 is
+     * the overhead from RFC 7541, Section 4.1). Since earlier header fields in
+     * the dynamic table are unknown, we will try to use a small dummy header
+     * field to maximize the number of entries: "<unknown>" with no value.
+     *
+     * The binary instruction to insert this is defined in Figure 7 of RFC 7541.
+     */
+    static const guint8 dummy_header[] = "\x40"
+                                         "\x09"      /* Name String Length */
+                                         HTTP2_HEADER_UNKNOWN /* Name String */
+                                         "\0";       /* Value Length */
+    const int dummy_header_size = sizeof(dummy_header) - 1;
+    const int dummy_entries_to_add = 4096 / (32 + dummy_header_size - 3);
+    for (int i = dummy_entries_to_add - 1; i >= 0; --i) {
+        nghttp2_nv nv;
+        int inflate_flags = 0;
+        int rv = (int)nghttp2_hd_inflate_hd2(hd_inflater, &nv, &inflate_flags,
+                                             dummy_header, dummy_header_size,
+                                             i == 0);
+        if (rv != dummy_header_size) {
+            g_log(G_LOG_DOMAIN, G_LOG_LEVEL_WARNING,
+                  "unexpected decompression state: %d != %d", rv,
+                  dummy_header_size);
+            break;
+        }
+    }
+    nghttp2_hd_inflate_end_headers(hd_inflater);
+}
+
 static void
 inflate_http2_header_block(tvbuff_t *tvb, packet_info *pinfo, guint offset, proto_tree *tree,
                            guint headlen, http2_session_t *h2session, guint8 flags)
@@ -1725,6 +1804,8 @@ inflate_http2_header_block(tvbuff_t *tvb, packet_info *pinfo, guint offset, prot
         hd_inflater = h2session->hd_inflater[flow_index];
         header_repr_info = &h2session->header_repr_info[flow_index];
 
+        fix_partial_header_dissection_support(hd_inflater, &h2session->fix_dynamic_table[flow_index]);
+
         final = flags & HTTP2_FLAGS_END_HEADERS;
 
         headers = wmem_array_sized_new(wmem_file_scope(), sizeof(http2_header_t), 16);
@@ -1738,13 +1819,9 @@ inflate_http2_header_block(tvbuff_t *tvb, packet_info *pinfo, guint offset, prot
                 break;
             }
 
-#if (NGHTTP2_VERSION_NUM >= 0x010B00)
             rv = (int)nghttp2_hd_inflate_hd2(hd_inflater, &nv,
-                &inflate_flags, headbuf, headlen, final);
-#else
-            rv = (int)nghttp2_hd_inflate_hd(hd_inflater, &nv,
-                &inflate_flags, headbuf, headlen, final);
-#endif
+                                             &inflate_flags, headbuf, headlen, final);
+
             if(rv < 0) {
                 break;
             }
@@ -2088,9 +2165,9 @@ dissect_http2_header_flags(tvbuff_t *tvb, packet_info *pinfo _U_, proto_tree *ht
 {
 
     guint64 flags_val;
-    const int** fields;
+    int* const * fields;
 
-    static const int* http2_hdr_flags[] = {
+    static int* const http2_hdr_flags[] = {
         &hf_http2_flags_unused_headers,
         &hf_http2_flags_priority,
         &hf_http2_flags_padded,
@@ -2099,40 +2176,40 @@ dissect_http2_header_flags(tvbuff_t *tvb, packet_info *pinfo _U_, proto_tree *ht
         NULL
     };
 
-    static const int* http2_data_flags[] = {
+    static int* const http2_data_flags[] = {
         &hf_http2_flags_unused_data,
         &hf_http2_flags_padded,
         &hf_http2_flags_end_stream,
         NULL
     };
 
-    static const int* http2_settings_flags[] = {
+    static int* const http2_settings_flags[] = {
         &hf_http2_flags_unused_settings,
         &hf_http2_flags_settings_ack,
         NULL
     };
 
-    static const int* http2_push_promise_flags[] = {
+    static int* const http2_push_promise_flags[] = {
         &hf_http2_flags_unused_push_promise,
         &hf_http2_flags_padded,
         &hf_http2_flags_end_headers,
         NULL
     };
 
-    static const int* http2_continuation_flags[] = {
+    static int* const http2_continuation_flags[] = {
         &hf_http2_flags_unused_continuation,
         &hf_http2_flags_padded,
         &hf_http2_flags_end_headers,
         NULL
     };
 
-    static const int* http2_ping_flags[] = {
+    static int* const http2_ping_flags[] = {
         &hf_http2_flags_unused_ping,
         &hf_http2_flags_ping_ack,
         NULL
     };
 
-    static const int* http2_unused_flags[] = {
+    static int* const http2_unused_flags[] = {
         &hf_http2_flags_unused,
         NULL
     };

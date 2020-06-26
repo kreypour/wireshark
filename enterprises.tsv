@@ -5,7 +5,7 @@
 # The format used here is: <NUMERICAL_ID><SPACE><NAME>
 # Where SPACE can be any sequence of spaces and tabs.
 #
-# (last updated 2020-05-15)
+# (last updated 2020-06-20)
 
 0	Reserved
 1	NxNetworks
@@ -354,7 +354,7 @@
 344	Compuware Corporation
 345	Epson Research Center
 346	Fibernet
-347	Dot Hill Systems
+347	Seagate Technology
 348	American Express Company
 349	Compu-Shack
 350	Parallan Computer, Inc.
@@ -814,7 +814,7 @@
 805	Applications Management Corp
 806	Travelers Insurance Company
 807	Taiwan International Standard Electronics Ltd.
-808	US Patent and Trademark Office Rick
+808	US Patent and Trademark Office
 809	Hynet, Ltd.
 810	Aydin, Corp.
 811	ADDTRON Technology Co., Ltd.
@@ -3445,7 +3445,7 @@
 3441	South Carolina State Ports Authority (SCSPA)
 3442	Advantech Inc.
 3443	United Healthcare
-3444	egnite Software GmbH
+3444	egnite GmbH
 3445	Radiant Communications Corp.
 3446	Ridge Technologies Dave
 3447	JGI, Inc.
@@ -6511,7 +6511,7 @@
 6524	Greenbytes GmbH
 6525	Jasmine Networks, Inc.
 6526	Windward Consulting Group
-6527	Alcatel-Lucent	# formerly 'Panthera Networks, Inc.'
+6527	Nokia	# formerly 'Alcatel-Lucent'
 6528	Source One
 6529	Bundesamt für Sicherheit in der Informationstechnik
 6530	2N spol. s r.o.
@@ -18432,7 +18432,7 @@
 18580	Whetstone Software
 18581	SPD-Bundestagsfraktion
 18582	Slack Ltd.
-18583	Bit 9 Inc.
+18583	Vmware Carbon Black	# formerly 'Bit 9 Inc.'
 18584	Avanex  Co.
 18585	GuangDong Poson Company.Ltd
 18586	bbassett.net
@@ -21930,7 +21930,7 @@
 22084	Industec Industria Metalurgica Ltda.
 22085	CIDE Consorcio para la Interoperabilidad de Documentos Electrónicos
 22086	Paul Poeltner
-22087	Invelica GmbH	# formerly 'Bodo Rueskamp'
+22087	Invelica GmbH
 22088	Alpine-Energie Holding AG
 22089	Paedagogische Hochschule Zentralschweiz
 22090	GCommerce Inc.
@@ -26610,7 +26610,7 @@
 26766	.vantronix secure systems
 26767	Alcatel-Lucent TMC	# formerly 'Alcatel SOC'
 26768	Comune di Rimini
-26769	United Technologies Corporation
+26769	Raytheon Technologies Corporation
 26770	Virtutility Ltd
 26771	Versaterm Inc.
 26772	The Royal Conservatoire
@@ -27258,7 +27258,7 @@
 27414	Stadt Chemnitz
 27415	SiRF Technology, Inc.
 27416	Elvaco AB
-27417	FAST TV-SERVER AG
+27417	FAST LTA GmbH
 27418	FiSEC GmbH
 27419	University of New England
 27420	Southside Community Hospital
@@ -35219,7 +35219,7 @@
 35387	Ning
 35388	Beyel
 35389	KIWIGRID
-35390	Credoc services CVBA
+35390	Fednot asbl / vzw	# formerly 'Credoc services CVBA'
 35391	HealthTrio, LLC
 35392	sepox.de
 35393	Blue Vervet Ltd
@@ -39824,7 +39824,7 @@
 39996	sys4 AG
 39997	Netsumo Ltd
 39998	Beijing Lanxum New Technology
-39999	Prodo Telecom (An OT Company)
+39999	IDEMIA SPAIN PRODO SLU	# formerly 'Prodo Telecom (An OT Company)'
 40000	Kapsi Internet-käyttäjät ry
 40001	WineSOFT
 40002	Open System Co., Ltd.
@@ -45067,7 +45067,7 @@
 45247	Triple Domain Vision Co., Ltd.
 45248	NetOcean
 45249	Banco Macro S.A.
-45250	Habr LLC
+45250	Habr Europe OÜ
 45251	axelIT Üzletfejlesztési Kft.
 45252	mDAKS GmbH
 45253	RMB Capital Management, LLC
@@ -50662,7 +50662,7 @@
 50849	VSV Frakt AB
 50850	SnowOncard
 50851	Gnome Rock
-50852	LECIP SLP CORPORATION
+50852	LECIP CORPORATION	# formerly 'LECIP SLP CORPORATION'
 50853	BERTIN IT
 50854	Communics Systemhaus GmbH
 50855	Block Center for Integrative Cancer Treatment
@@ -51211,7 +51211,7 @@
 51399	secure.car
 51400	Max Planck Society Administrative Headquarters
 51401	Hunan Normal University
-51402	NT-SRV LTD
+51402	1G5 Solutions	# formerly 'NT-SRV LTD'
 51403	Ooe Landesfeuerwehrverband
 51404	Università degli Studi dell'Insubria
 51405	infoscore austria gmbh
@@ -51603,7 +51603,7 @@
 51791	Corsearch, Inc
 51792	Björnsholms Åkeri AB
 51793	Derakhshan Sanat Isatis (DSI)
-51794	Bosch Software Innovations GmbH
+51794	Bosch.IO GmbH
 51795	Ovoo Sp. z o. o.
 51796	Citadel LLC
 51797	Bachmann electronic GmbH
@@ -52819,7 +52819,7 @@
 53010	KECCEO AB
 53011	JH skogsentreprenad AB
 53012	Pine Rest
-53013	Dirección Adjunta de Rentas Aduaneras
+53013	Administración de Aduanera de Honduras	# formerly 'Dirección Adjunta de Rentas Aduaneras'
 53014	SIGMA SYSTEM CO.,LTD.
 53015	Murakami Business Consulting, Inc.
 53016	AXYS Technologies Inc
@@ -53309,7 +53309,6 @@
 53500	IVES-SYSTEM Sp. z o. o.
 53501	DC IT-Consulting
 53502	RealexPayments
-53503	Sprint Federal Operations
 53504	Stephens College
 53505	TELERYS COMMUNICATION
 53506	Kaman Inc.
@@ -54206,7 +54205,7 @@
 54399	The ORP Project
 54400	Beijing Microvision Technology CO.,Ltd.
 54401	Canterbury District Health Board (CDHB)
-54402	Opensource ICT Solutions b.V.
+54402	Opensource ICT Solutions B.V.
 54403	Virgin Mobile UK SIT2
 54404	Virgin Mobile UK SIT1
 54405	Virgin Mobile UK PROD
@@ -55486,7 +55485,7 @@
 55679	Sunmark Credit Union
 55680	American Library Association
 55681	Zeplay LLC
-55682	Julian Jacobi
+55682	JayJay
 55683	Swissomation Inc.
 55684	RBZ am Schuetzenpark
 55685	Albert Neef Consulting
@@ -55506,7 +55505,7 @@
 55699	VTNS
 55700	AppLine
 55701	Signers Technology LLC
-55702	Adam Maxwell Investment
+55702	Adam Maxwell Investment Company AMI
 55703	OAG INDUSTRIES srl
 55704	OpenetME
 55705	Smith Consulting LLC
@@ -55599,3 +55598,179 @@
 55792	DAERZK
 55793	Communauté PKILabs
 55794	NINGBO DEYE INVERTER TECHNOLOGY Co., LTD
+55795	BIZ-CHO
+55796	ORANO SA
+55797	Some Idiots Are Savants
+55798	OCN
+55799	E Squared
+55800	smartics
+55801	Buypass AS
+55802	GLOTEC ENGINEERING (SA) (PTY) LTD.
+55803	GBS Backup B.V.
+55804	Neural Inference Solutions Inc.
+55805	eBay Inc
+55806	Alertus Technologies LLC
+55807	Baronics LLC
+55808	Drifting Mind Studio
+55809	Crystal Crest Cleaners
+55810	Vitesco Technologies
+55811	JSC "MIR UPAKOVKI"
+55812	Laboratories of Molecular Anthropology and Microbiome Research
+55813	HashiCorp, Inc.
+55814	RnD Center "IMPULSE"
+55815	Factor-y S.r.l.
+55816	LifeLens Technologies
+55817	Teichmann Integration Services
+55818	Cunningham Research Corporation Limited
+55819	Eko-Okna S.A.
+55820	MedPics LLC
+55821	ELTACOM
+55822	Clover Cyber
+55823	Perry Familia
+55824	SKS
+55825	Tiny Tiny Computing
+55826	Nerd-Residenz
+55827	Uplevel Systems, Inc
+55828	Marshall Community Credit Union
+55829	Arthur18
+55830	Gazprom Remont
+55831	Speedway LLC
+55832	Fidelity National Information Services
+55833	Shenzhen boruide technology co. LTD
+55834	NorthHinkle
+55835	Sutra Tech Labs Inc
+55836	MFA Informatik AG
+55837	Schäckermann
+55838	DLinuxguy INC.
+55839	Lynxgistics Inter Freight Co., Ltd.
+55840	JieYue technical service studio
+55841	Tibasamaneh
+55842	Lagoni Engineering
+55843	AXXICON Moulds Eindhoven BV
+55844	Nebig Verpakkingen B.V.
+55845	Mevi Beheer
+55846	Smits Groep
+55847	Libéma Exploitatie B.V.
+55848	Swifthosting ApS
+55849	Mizar Magic and Research Network
+55850	Veea Systems Ltd
+55851	Jordan Klein
+55852	Saṃvásana Holdings
+55853	BaaSid International Lab Co.,LTD. (Taiwan)
+55854	Pagebe.fr
+55855	UkrTrade ltd
+55856	EMCO Chemical Distributors, Inc.
+55857	DD Cloud
+55858	ALL D.S. SECURITY SOLUTIONS LTD
+55859	Mini-Circuits
+55860	Advantech Wireless Technologies Inc.
+55861	Miranham -CreatorGroups-
+55862	Gold Corporation
+55863	COMNET INC.
+55864	AMMG
+55865	The University of Alabama
+55866	Mathima Technologies
+55867	eSKamation
+55868	Useful Bytes LLC
+55869	Leertouwer
+55870	Zaman 01 LTD
+55871	Crédit Mutuel ARKEA
+55872	ProLabs
+55873	Xona Systems, Inc.
+55874	Østfold Interkommunale Arkivselskap IKS
+55875	Agentilo GmbH
+55876	VitalThings AS
+55877	AppEx Networks Corporation
+55878	ABSU Limited
+55879	AddSecure Acquisitions Holdings AB
+55880	StealthPath Inc.
+55881	toolman.org
+55882	GREEN CITY STI.,JSC
+55883	Micro-Design Inc
+55884	fremetih solutions
+55885	Successful Endeavours Pty Ltd
+55886	Imperani Alarm Services T/A JA Security
+55887	Nanjing Huastart Network Technology Co.Ltd
+55888	TradeWith
+55889	TycheTools, SL
+55890	Technocon
+55891	Artemis Tosini
+55892	Guang Zhou Aoshi Internet Information & Technology Co., Ltd.
+55893	Hyve Solutions
+55894	e-Smart Systems Europe SL.
+55895	Katariya Infra Projects Private Limited
+55896	DAAD - Deutscher Akademischer Austauschdienst
+55897	ARKRAY USA, Inc.
+55898	MEDICON
+55899	IPG Information Process Group GmbH Deutschland
+55900	National Academy of Forensic Engineers
+55901	Sven Anders
+55902	3FONT
+55903	hagebau IT GmbH
+55904	National Petroleum Construction Company
+55905	J.H.C. de Rooy Holding B.V.
+55906	SecretNest.info
+55907	Shenzhen New Trend International Logistics Technology Co.,LTD
+55908	Dinnissen B.V.
+55909	Coolsure Limited
+55910	Heka Werkzeuge GmbH
+55911	Proper Code
+55912	Associação Nacional dos Registradores de Pessoas Naturais
+55913	Pinnacle Oncology
+55914	Tomasz Szkutkowski IT Consulting
+55915	NEMZETI MOBILFIZETESI ZRT.
+55916	Junge Sprachwissenschaft e. V.
+55917	Tel
+55918	SecureLogic LTD
+55919	Martin Loehnertz IT Beratung
+55920	PCItek
+55921	iSAtech water GmbH
+55922	Kismet Wireless
+55923	Lauterbach GmbH
+55924	yfn Beteiligungsgesellschaft UG
+55925	Buy Whole Foods Online Ltd
+55926	Cumtenn Intelligent information science and technology（Zhejiang） Co., Ltd.
+55927	seot
+55928	JSC Profotech
+55929	University of Lausanne
+55930	Kwikbit
+55931	Safe Host S.A.
+55932	GXM Consulting
+55933	Powersoft S.p.A.
+55934	Cryptnox SA
+55935	Kutai Electronics Industry Co., LDTD.
+55936	Grentech
+55937	Delta Electronics, Inc.
+55938	Kero Kero Information Technology Center
+55939	Garantir Technologies Private Limited
+55940	Temas LLC
+55941	Wisdom Technologies Pvt Ltd
+55942	LightEdge Solutions
+55943	Opennetworks Kft.
+55944	Netlock Gmbh
+55945	MC-Technologies GmbH
+55946	Arra Networks
+55947	SkizNet
+55948	Rayn0r Ltd.
+55949	ALVO Spółka z ograniczoną odpowiedzialnością, Sp. k.
+55950	Keydok LLC
+55951	AmLight/AMPATH
+55952	Laboratorio de Modelos y Datos de la UNAM
+55953	FRAMATOME
+55954	Episource LLC
+55955	Suzhou China Asterfusion Co.,LTD
+55956	iret Gesellschaft zur Entwicklung elektronischer Steuerungen mbH
+55957	ICS Technologies
+55958	reply
+55959	NeoVolta Inc.
+55960	Charles Russell Speechlys
+55961	Intenta GmbH
+55962	PD Inc
+55963	Bendigo and Adelaide Bank Limited
+55964	Carman Systems
+55965	Ministry of Foreign Affairs of the Republic of Uzbekistan
+55966	KeySwing
+55967	County of Lackawanna
+55968	Ammega Group B.V.
+55969	Gulf International Development LLC
+55970	BHDev Desenvolvimento e Consultoria em Informatica LTDA

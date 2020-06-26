@@ -137,6 +137,7 @@ libwireshark.so.0 libwireshark0 #MINVER#
  color_filters_clone@Base 2.1.0
  color_filters_colorize_packet@Base 2.1.0
  color_filters_export@Base 2.1.0
+ color_filters_get_tmp@Base 3.3.0
  color_filters_import@Base 2.1.0
  color_filters_init@Base 2.1.0
  color_filters_prime_edt@Base 2.1.0
@@ -817,7 +818,6 @@ libwireshark.so.0 libwireshark0 #MINVER#
  get_ipv6_hash_table@Base 1.12.0~rc1
  get_ipxnet_hash_table@Base 1.12.0~rc1
  get_iso_646_string@Base 3.1.0
- get_key_string@Base 1.9.1
  get_mac_lte_proto_data@Base 1.9.1
  get_mac_nr_proto_data@Base 2.5.2
  get_manuf_hashtable@Base 1.12.0~rc1

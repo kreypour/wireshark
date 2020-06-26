@@ -1068,7 +1068,7 @@
     </message>
     <message>
         <source>Marked</source>
-        <translation>Помеченный</translation>
+        <translation>Помечено</translation>
     </message>
     <message>
         <source>Packets</source>
@@ -2363,7 +2363,7 @@ For example, use 1 hour to have a new file created every hour on the hour.</sour
     <message>
         <source>Show…</source>
         <oldsource>Show...</oldsource>
-        <translation>Показать...</translation>
+        <translation>Показать…</translation>
     </message>
     <message>
         <source>Error</source>
@@ -3133,7 +3133,7 @@ For example, use 1 hour to have a new file created every hour on the hour.</sour
     </message>
     <message>
         <source> Click to select.</source>
-        <translation>Щёлкните, чтобы выбрать.</translation>
+        <translation> Щёлкните, чтобы выбрать.</translation>
     </message>
     <message>
         <source>Regex Find:</source>
@@ -7265,7 +7265,7 @@ For example, use 1 hour to have a new file created every hour on the hour.</sour
     </message>
     <message>
         <source>Decode &amp;As…</source>
-        <translation>Декодировать &amp;Как...</translation>
+        <translation>Декодировать &amp;Как…</translation>
     </message>
     <message>
         <source>Export PDUs to File…</source>
@@ -7788,7 +7788,7 @@ For example, use 1 hour to have a new file created every hour on the hour.</sour
     <message>
         <source>Check for Updates</source>
         <oldsource>Check for Updates...</oldsource>
-        <translation>Проверить Наличие Обновлений</translation>
+        <translation>Проверить Обновления</translation>
     </message>
     <message>
         <source> before quitting</source>
@@ -9579,6 +9579,34 @@ For example, use 1 hour to have a new file created every hour on the hour.</sour
     <message>
         <source>LCID 10</source>
         <translation>LCID 10</translation>
+    </message>
+    <message>
+        <source>LCID 32</source>
+        <translation>LCID 32</translation>
+    </message>
+    <message>
+        <source>LCID 33</source>
+        <translation>LCID 33</translation>
+    </message>
+    <message>
+        <source>LCID 34</source>
+        <translation>LCID 34</translation>
+    </message>
+    <message>
+        <source>LCID 35</source>
+        <translation>LCID 35</translation>
+    </message>
+    <message>
+        <source>LCID 36</source>
+        <translation>LCID 36</translation>
+    </message>
+    <message>
+        <source>LCID 37</source>
+        <translation>LCID 37</translation>
+    </message>
+    <message>
+        <source>LCID 38</source>
+        <translation>LCID 38</translation>
     </message>
     <message>
         <source>TM</source>

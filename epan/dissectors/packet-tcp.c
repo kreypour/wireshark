@@ -384,6 +384,7 @@ static expert_field ei_tcp_analysis_zero_window = EI_INIT;
 static expert_field ei_tcp_analysis_zero_window_probe_ack = EI_INIT;
 static expert_field ei_tcp_analysis_tfo_syn = EI_INIT;
 static expert_field ei_tcp_analysis_tfo_ack = EI_INIT;
+static expert_field ei_tcp_analysis_tfo_ignored = EI_INIT;
 static expert_field ei_tcp_scps_capable = EI_INIT;
 static expert_field ei_tcp_option_snack_sequence = EI_INIT;
 static expert_field ei_tcp_option_wscale_shift_invalid = EI_INIT;
@@ -596,7 +597,7 @@ static guint32 mptcp_stream_count;
  */
 static wmem_tree_t *mptcp_tokens = NULL;
 
-static const int *tcp_option_mptcp_capable_v0_flags[] = {
+static int * const tcp_option_mptcp_capable_v0_flags[] = {
   &hf_tcp_option_mptcp_checksum_flag,
   &hf_tcp_option_mptcp_B_flag,
   &hf_tcp_option_mptcp_H_v0_flag,
@@ -604,7 +605,7 @@ static const int *tcp_option_mptcp_capable_v0_flags[] = {
   NULL
 };
 
-static const int *tcp_option_mptcp_capable_v1_flags[] = {
+static int * const tcp_option_mptcp_capable_v1_flags[] = {
   &hf_tcp_option_mptcp_checksum_flag,
   &hf_tcp_option_mptcp_B_flag,
   &hf_tcp_option_mptcp_H_v1_flag,
@@ -612,12 +613,12 @@ static const int *tcp_option_mptcp_capable_v1_flags[] = {
   NULL
 };
 
-static const int *tcp_option_mptcp_join_flags[] = {
+static int * const tcp_option_mptcp_join_flags[] = {
   &hf_tcp_option_mptcp_backup_flag,
   NULL
 };
 
-static const int *tcp_option_mptcp_dss_flags[] = {
+static int * const tcp_option_mptcp_dss_flags[] = {
   &hf_tcp_option_mptcp_F_flag,
   &hf_tcp_option_mptcp_m_flag,
   &hf_tcp_option_mptcp_M_flag,
@@ -3981,6 +3982,7 @@ dissect_tcpopt_tfo_payload(tvbuff_t *tvb, int offset, guint optlen,
 {
     proto_item *ti;
     struct tcpheader *tcph = (struct tcpheader*)data;
+    struct tcp_analysis *tcpd;
 
     if (optlen == 2) {
         /* Fast Open Cookie Request */
@@ -3994,6 +3996,14 @@ dissect_tcpopt_tfo_payload(tvbuff_t *tvb, int offset, guint optlen,
         col_append_str(pinfo->cinfo, COL_INFO, " TFO=C");
         if ((tcph->th_flags & (TH_SYN|TH_ACK)) == TH_SYN) {
             expert_add_info(pinfo, ti, &ei_tcp_analysis_tfo_syn);
+
+            /* Is this a SYN with data and the cookie? */
+            if (tcph->th_have_seglen && tcph->th_seglen) {
+                tcpd = get_tcp_conversation_data(NULL, pinfo);
+                if (tcpd) {
+                    tcpd->tfo_syn_data = 1;
+                }
+            }
         }
     }
 }
@@ -4193,7 +4203,7 @@ dissect_tcpopt_sack(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void* d
         proto_tree_add_uint_format(field_tree, hf_tcp_option_sack_sle, tvb,
                                    offset, 4, leftedge,
                                    "left edge = %u%s", leftedge,
-                                   tcp_relative_seq ? " (relative)" : "");
+                                   (tcp_analyze_seq && tcp_relative_seq) ? " (relative)" : "");
 
         optlen -= 4;
         if (optlen < 4) {
@@ -4206,7 +4216,7 @@ dissect_tcpopt_sack(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void* d
         proto_tree_add_uint_format(field_tree, hf_tcp_option_sack_sre, tvb,
                                    offset+4, 4, rightedge,
                                    "right edge = %u%s", rightedge,
-                                   tcp_relative_seq ? " (relative)" : "");
+                                   (tcp_analyze_seq && tcp_relative_seq) ? " (relative)" : "");
         tcp_info_append_uint(pinfo, "SLE", leftedge);
         tcp_info_append_uint(pinfo, "SRE", rightedge);
         num_sack_ranges++;
@@ -5223,7 +5233,7 @@ dissect_tcpopt_snack(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void* 
 
     ack   = tvb_get_ntohl(tvb, 8);
 
-    if (tcp_relative_seq) {
+    if (tcp_analyze_seq && tcp_relative_seq) {
         ack -= tcpd->rev->base_seq;
     }
 
@@ -5250,7 +5260,7 @@ dissect_tcpopt_snack(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void* 
         proto_item_set_hidden(hidden_item);
 
         proto_tree_add_expert_format(field_tree, pinfo, &ei_tcp_option_snack_sequence, tvb, offset+2, 4,
-                            "SNACK Sequence %u - %u%s", hole_start, hole_end, ((tcp_relative_seq) ? " (relative)" : ""));
+                            "SNACK Sequence %u - %u%s", hole_start, hole_end, ((tcp_analyze_seq && tcp_relative_seq) ? " (relative)" : ""));
 
         tcp_info_append_uint(pinfo, "SNLE", hole_start);
         tcp_info_append_uint(pinfo, "SNRE", hole_end);
@@ -5597,7 +5607,7 @@ dissect_tcpopt_rvbd_trpy(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, vo
     guint16 sport, dport, flags;
     int offset = 0,
         optlen = tvb_reported_length(tvb);
-    static const int * rvbd_trpy_flags[] = {
+    static int * const rvbd_trpy_flags[] = {
         &hf_tcp_option_rvbd_trpy_flag_fw_rst_probe,
         &hf_tcp_option_rvbd_trpy_flag_fw_rst_inner,
         &hf_tcp_option_rvbd_trpy_flag_fw_rst,
@@ -6349,7 +6359,7 @@ dissect_tcp(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void* data _U_)
     }
 
     if (!icmp_ip) {
-        if(tcp_relative_seq) {
+        if(tcp_relative_seq && tcp_analyze_seq) {
             proto_tree_add_uint_format_value(tcp_tree, hf_tcp_seq, tvb, offset + 4, 4, tcph->th_seq, "%u    (relative sequence number)", tcph->th_seq);
             proto_tree_add_uint(tcp_tree, hf_tcp_seq_abs, tvb, offset + 4, 4, tcph->th_rawseq);
         } else {
@@ -6384,7 +6394,7 @@ dissect_tcp(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void* data _U_)
     }
     proto_item_set_len(ti, tcph->th_hlen);
     if (tcph->th_have_seglen) {
-        if(tcp_relative_seq) {
+        if(tcp_relative_seq && tcp_analyze_seq) {
             if (tcph->th_flags&(TH_SYN|TH_FIN))  {
                 tf=proto_tree_add_uint_format_value(tcp_tree, hf_tcp_nxtseq, tvb, offset, 0, nxtseq + 1, "%u    (relative sequence number)", nxtseq + 1);
             } else  {
@@ -6403,15 +6413,17 @@ dissect_tcp(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void* data _U_)
     tf = proto_tree_add_uint(tcp_tree, hf_tcp_ack, tvb, offset + 8, 4, tcph->th_ack);
     hide_seqack_abs_item = proto_tree_add_uint(tcp_tree, hf_tcp_ack_abs, tvb, offset + 8, 4, tcph->th_rawack);
     if (tcph->th_flags & TH_ACK) {
-        if (tcp_relative_seq) {
+        if (tcp_relative_seq && tcp_analyze_seq) {
             proto_item_append_text(tf, "    (relative ack number)");
         } else {
             proto_item_set_hidden(hide_seqack_abs_item);
         }
-        if (tcph->th_flags & TH_SYN) {
+        if ((tcph->th_flags & TH_SYN) && tcp_analyze_seq) {
             if ((tcp_relative_seq && tcph->th_ack > 1) ||
                (!tcp_relative_seq && tcpd && (tcph->th_ack - tcpd->rev->base_seq) > 1)) {
                 expert_add_info(pinfo, tf, &ei_tcp_analysis_tfo_ack);
+            } else if (tcpd && tcpd->tfo_syn_data) {
+                expert_add_info(pinfo, tf, &ei_tcp_analysis_tfo_ignored);
             }
         }
     } else {
@@ -7719,7 +7731,8 @@ proto_register_tcp(void)
         { &ei_tcp_analysis_zero_window, { "tcp.analysis.zero_window", PI_SEQUENCE, PI_WARN, "TCP Zero Window segment", EXPFILL }},
         { &ei_tcp_analysis_zero_window_probe_ack, { "tcp.analysis.zero_window_probe_ack", PI_SEQUENCE, PI_NOTE, "ACK to a TCP Zero Window Probe", EXPFILL }},
         { &ei_tcp_analysis_tfo_syn, { "tcp.analysis.tfo_syn", PI_SEQUENCE, PI_NOTE, "TCP SYN with TFO Cookie", EXPFILL }},
-        { &ei_tcp_analysis_tfo_ack, { "tcp.analysis.tfo_ack", PI_SEQUENCE, PI_NOTE, "TCP SYN-ACK accepting data", EXPFILL }},
+        { &ei_tcp_analysis_tfo_ack, { "tcp.analysis.tfo_ack", PI_SEQUENCE, PI_NOTE, "TCP SYN-ACK accepting TFO data", EXPFILL }},
+        { &ei_tcp_analysis_tfo_ignored, { "tcp.analysis.tfo_ignored", PI_SEQUENCE, PI_NOTE, "TCP SYN-ACK ignoring TFO data", EXPFILL }},
         { &ei_tcp_scps_capable, { "tcp.analysis.zero_window_probe_ack", PI_SEQUENCE, PI_NOTE, "Connection establish request (SYN-ACK): SCPS Capabilities Negotiated", EXPFILL }},
         { &ei_tcp_option_snack_sequence, { "tcp.options.snack.sequence", PI_SEQUENCE, PI_NOTE, "SNACK Sequence", EXPFILL }},
         { &ei_tcp_option_wscale_shift_invalid, { "tcp.options.wscale.shift.invalid", PI_PROTOCOL, PI_WARN, "Window scale shift exceeds 14", EXPFILL }},
@@ -7899,7 +7912,7 @@ proto_register_tcp(void)
         "Make the TCP dissector analyze TCP sequence numbers to find and flag segment retransmissions, missing segments and RTT",
         &tcp_analyze_seq);
     prefs_register_bool_preference(tcp_module, "relative_sequence_numbers",
-        "Relative sequence numbers",
+        "Relative sequence numbers (Requires \"Analyze TCP sequence numbers\")",
         "Make the TCP dissector use relative sequence numbers instead of absolute ones. "
         "To use this option you must also enable \"Analyze TCP sequence numbers\". ",
         &tcp_relative_seq);
