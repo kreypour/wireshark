@@ -87,9 +87,11 @@ int dissect(
    rec = malloc(sizeof(wtap_rec));
    wtap_rec_init(rec);
    rec->rec_type = REC_TYPE_PACKET;
-   rec->rec_header.packet_header.pkt_encap = WTAP_ENCAP_ETHERNET;
+   rec->rec_header.packet_header.pkt_encap = encap_type;
    rec->rec_header.packet_header.caplen = input_len;
    rec->rec_header.packet_header.len = pkt_size;
+   rec->ts.secs = timestamp / 1000000000;
+   rec->ts.nsecs = timestamp % 1000000000;
    rec->presence_flags = 0;
 
    // this is the buffer that epan dissect takes as input
