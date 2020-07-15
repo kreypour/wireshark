@@ -973,12 +973,19 @@ static void
 write_json_proto_node_value(proto_node *node, write_json_data *pdata)
 {
     field_info *fi = node->finfo;
-    // Get the actual value of the node as a string.
-    char *value_string_repr = fvalue_to_string_repr(NULL, &fi->value, FTREPR_DISPLAY, fi->hfinfo->display);
+    if (fi->rep != NULL)
+    {
+        json_dumper_value_string(pdata->dumper, fi->rep->representation);
+    }
+    else
+    {
+        // Get the actual value of the node as a string.
+        char *value_string_repr = fvalue_to_string_repr(NULL, &fi->value, FTREPR_DISPLAY, fi->hfinfo->display);
 
-    json_dumper_value_string(pdata->dumper, value_string_repr);
+        json_dumper_value_string(pdata->dumper, value_string_repr);
 
-    wmem_free(NULL, value_string_repr);
+        wmem_free(NULL, value_string_repr);
+    }
 }
 
 /**
