@@ -1084,11 +1084,11 @@ static const char *
 proto_node_to_json_key(proto_node *node)
 {
     const char *json_key;
-    // Check if node has abbreviated name.
-    if (node->finfo->hfinfo->id != hf_text_only) {
-        json_key = node->finfo->hfinfo->name;
-    } else if (node->finfo->rep != NULL) {
+    // Check if node has representation.
+    if (node->finfo->rep != NULL) {
         json_key = node->finfo->rep->representation;
+    } else if (node->finfo->hfinfo->id != hf_text_only) {
+        json_key = node->finfo->hfinfo->name;
     } else {
         json_key = "";
     }
