@@ -6,6 +6,9 @@
 !define DESCRIPTION "Wireshark Libraries for EPAN Dissectors"
 !define ENVVAR "WIRESHARK_DISSECT_DIR"
 
+# for calculating install directory size
+!include "FileFunc.nsh"
+
 VIProductVersion "${PRODUCT_VERSION}"
 VIFileVersion "${VERSION}"
 VIAddVersionKey "FileVersion" "${VERSION}"
@@ -107,11 +110,16 @@ Section "install"
 
     # reg keys for add-remove programs
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "DisplayName" "${APPNAME} - ${DESCRIPTION}"
-    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "DisplayVersion" "${PRODUCT_VERSION}  "
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "DisplayVersion" "${PRODUCT_VERSION}"
+    WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "Publisher" "${APPNAME}"
     WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "UninstallString" "$\"$INSTDIR\uninstall.exe$\""
     # There is no option for modifying or repairing the install
     WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "NoModify" 1
     WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "NoRepair" 1
+
+    ${GetSize} "$INSTDIR" "/S=0K" $0 $1 $2
+    IntFmt $0 "0x%08X" $0
+    WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${APPNAME}" "EstimatedSize" "$0"
 SectionEnd
 
 ### uninstaller ###
