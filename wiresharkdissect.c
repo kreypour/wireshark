@@ -30,6 +30,7 @@ static void write_failure_message(const char *filename, int err);
 static void failure_message_cont(const char *msg_format, va_list ap);
 
 static gchar* delimiter_char = " ";
+static gchar* quote_char = "\"";
 
 static proto_node_children_grouper_func node_children_grouper = 
          proto_node_group_children_by_unique;
@@ -285,10 +286,9 @@ win32_fmemopen()
 }
 
 static char *
-get_line_buf(size_t len)
+get_line_buf(char* line_bufp, size_t len)
 {
-   static char *line_bufp = NULL;
-   static size_t line_buf_len = 256;
+   static size_t line_buf_len = 512;
    size_t new_line_buf_len;
 
    for (new_line_buf_len = line_buf_len; len > new_line_buf_len;
@@ -340,20 +340,65 @@ put_string_spaces(char *dest, const char *str, size_t str_len, size_t str_with_s
    dest[str_with_spaces] = '\0';
 }
 
+static inline void
+add_json_entry(char* json_bufp, size_t* json_offset, char* name, char* value, BOOL comma_prefix)
+{
+    size_t len = comma_prefix ?
+        *json_offset + strlen(name) + strlen(value) + 3:
+        *json_offset + strlen(name) + strlen(value) + 2;
+
+    json_bufp = get_line_buf(json_bufp, len);
+
+    if (comma_prefix)
+    {
+        strncpy(json_bufp + *json_offset, ",", 1);
+        *json_offset += 1;
+    }
+
+    strncpy(json_bufp + *json_offset, name, strlen(name));
+    *json_offset += strlen(name);
+    strncpy(json_bufp + *json_offset, quote_char, 1);
+    *json_offset += 1;
+    strncpy(json_bufp + *json_offset, value, strlen(value));
+    *json_offset += strlen(value);
+    strncpy(json_bufp + *json_offset, quote_char, 1);
+    *json_offset += 1;
+}
+
 // this is tshark's print_columns with some modifications
 char *print_columns(column_info *cinfo, const epan_dissect_t *edt)
 {
-   char* line_bufp;
+   static gchar* json_smry_prop = "\"summary\":";
+   static gchar* json_src_prop = "\"src_addr\":";
+   static gchar* json_dst_prop = "\"dst_addr\":";
+   static gchar* json_proto_prop = "\"protocol\":";
+
+   static char* json_bufp = NULL;
+   static char* smry_bufp = NULL;
+   static char* src_bufp = NULL;
+   static char* dst_bufp = NULL;
+   static char* proto_bufp = NULL;
+   
    int i;
+   size_t json_offset;
    size_t buf_offset;
    size_t column_len;
    size_t col_len;
    col_item_t *col_item;
    gchar str_format[11];
 
-   line_bufp = get_line_buf(256);
+   json_offset = 0;
    buf_offset = 0;
-   *line_bufp = '\0';
+   json_bufp = get_line_buf(json_bufp, 512);
+   *json_bufp = '\0';
+   smry_bufp = get_line_buf(smry_bufp, 512);
+   *smry_bufp = '\0';
+   src_bufp = get_line_buf(src_bufp, 512);
+   *src_bufp = '\0';
+   dst_bufp = get_line_buf(dst_bufp, 512);
+   *dst_bufp = '\0';
+   proto_bufp = get_line_buf(proto_bufp, 512);
+   *proto_bufp = '\0';
 
    for (i = 0; i < cinfo->num_cols; i++)
    {
@@ -390,8 +435,10 @@ char *print_columns(column_info *cinfo, const epan_dissect_t *edt)
          column_len = col_len = strlen(col_item->col_data);
          if (column_len < 12)
             column_len = 12;
-         line_bufp = get_line_buf(buf_offset + column_len);
-         put_spaces_string(line_bufp + buf_offset, col_item->col_data, col_len, column_len);
+         smry_bufp = get_line_buf(smry_bufp, buf_offset + column_len);
+         put_spaces_string(smry_bufp + buf_offset, col_item->col_data, col_len, column_len);
+         src_bufp = get_line_buf(src_bufp, buf_offset + column_len);
+         put_string(src_bufp, col_item->col_data, column_len);
          break;
 
       case COL_DEF_DST:
@@ -406,14 +453,21 @@ char *print_columns(column_info *cinfo, const epan_dissect_t *edt)
          column_len = col_len = strlen(col_item->col_data);
          if (column_len < 12)
             column_len = 12;
-         line_bufp = get_line_buf(buf_offset + column_len);
-         put_string_spaces(line_bufp + buf_offset, col_item->col_data, col_len, column_len);
+         smry_bufp = get_line_buf(smry_bufp, buf_offset + column_len);
+         put_string_spaces(smry_bufp + buf_offset, col_item->col_data, col_len, column_len);
+         dst_bufp = get_line_buf(dst_bufp, buf_offset + column_len);
+         put_string(dst_bufp, col_item->col_data, column_len);
          break;
+
+      case COL_PROTOCOL:
+          proto_bufp = get_line_buf(proto_bufp, buf_offset + column_len);
+          put_string(proto_bufp, col_item->col_data, column_len);
+          /* FALLTHROUGH */
 
       default:
          column_len = strlen(col_item->col_data);
-         line_bufp = get_line_buf(buf_offset + column_len);
-         put_string(line_bufp + buf_offset, col_item->col_data, column_len);
+         smry_bufp = get_line_buf(smry_bufp, buf_offset + column_len);
+         put_string(smry_bufp + buf_offset, col_item->col_data, column_len);
          break;
       }
       buf_offset += column_len;
@@ -433,7 +487,7 @@ char *print_columns(column_info *cinfo, const epan_dissect_t *edt)
        * We add enough space to the buffer for " \xe2\x86\x90 "
        * or " \xe2\x86\x92 ", even if we're only adding " ".
        */
-         line_bufp = get_line_buf(buf_offset + 5);
+         smry_bufp = get_line_buf(smry_bufp, buf_offset + 5);
          switch (col_item->col_fmt)
          {
 
@@ -447,12 +501,12 @@ char *print_columns(column_info *cinfo, const epan_dissect_t *edt)
             case COL_RES_DST:
             case COL_UNRES_DST:
                g_snprintf(str_format, sizeof(str_format), "%s%s%s", delimiter_char, UTF8_RIGHTWARDS_ARROW, delimiter_char);
-               put_string(line_bufp + buf_offset, str_format, 5);
+               put_string(smry_bufp + buf_offset, str_format, 5);
                buf_offset += 5;
                break;
 
             default:
-               put_string(line_bufp + buf_offset, delimiter_char, 1);
+               put_string(smry_bufp + buf_offset, delimiter_char, 1);
                buf_offset += 1;
                break;
             }
@@ -468,12 +522,12 @@ char *print_columns(column_info *cinfo, const epan_dissect_t *edt)
             case COL_RES_DL_DST:
             case COL_UNRES_DL_DST:
                g_snprintf(str_format, sizeof(str_format), "%s%s%s", delimiter_char, UTF8_RIGHTWARDS_ARROW, delimiter_char);
-               put_string(line_bufp + buf_offset, str_format, 5);
+               put_string(smry_bufp + buf_offset, str_format, 5);
                buf_offset += 5;
                break;
 
             default:
-               put_string(line_bufp + buf_offset, delimiter_char, 1);
+               put_string(smry_bufp + buf_offset, delimiter_char, 1);
                buf_offset += 1;
                break;
             }
@@ -489,12 +543,12 @@ char *print_columns(column_info *cinfo, const epan_dissect_t *edt)
             case COL_RES_NET_DST:
             case COL_UNRES_NET_DST:
                g_snprintf(str_format, sizeof(str_format), "%s%s%s", delimiter_char, UTF8_RIGHTWARDS_ARROW, delimiter_char);
-               put_string(line_bufp + buf_offset, str_format, 5);
+               put_string(smry_bufp + buf_offset, str_format, 5);
                buf_offset += 5;
                break;
 
             default:
-               put_string(line_bufp + buf_offset, delimiter_char, 1);
+               put_string(smry_bufp + buf_offset, delimiter_char, 1);
                buf_offset += 1;
                break;
             }
@@ -510,12 +564,12 @@ char *print_columns(column_info *cinfo, const epan_dissect_t *edt)
             case COL_RES_SRC:
             case COL_UNRES_SRC:
                g_snprintf(str_format, sizeof(str_format), "%s%s%s", delimiter_char, UTF8_LEFTWARDS_ARROW, delimiter_char);
-               put_string(line_bufp + buf_offset, str_format, 5);
+               put_string(smry_bufp + buf_offset, str_format, 5);
                buf_offset += 5;
                break;
 
             default:
-               put_string(line_bufp + buf_offset, delimiter_char, 1);
+               put_string(smry_bufp + buf_offset, delimiter_char, 1);
                buf_offset += 1;
                break;
             }
@@ -531,12 +585,12 @@ char *print_columns(column_info *cinfo, const epan_dissect_t *edt)
             case COL_RES_DL_SRC:
             case COL_UNRES_DL_SRC:
                g_snprintf(str_format, sizeof(str_format), "%s%s%s", delimiter_char, UTF8_LEFTWARDS_ARROW, delimiter_char);
-               put_string(line_bufp + buf_offset, str_format, 5);
+               put_string(smry_bufp + buf_offset, str_format, 5);
                buf_offset += 5;
                break;
 
             default:
-               put_string(line_bufp + buf_offset, delimiter_char, 1);
+               put_string(smry_bufp + buf_offset, delimiter_char, 1);
                buf_offset += 1;
                break;
             }
@@ -552,26 +606,51 @@ char *print_columns(column_info *cinfo, const epan_dissect_t *edt)
             case COL_RES_NET_SRC:
             case COL_UNRES_NET_SRC:
                g_snprintf(str_format, sizeof(str_format), "%s%s%s", delimiter_char, UTF8_LEFTWARDS_ARROW, delimiter_char);
-               put_string(line_bufp + buf_offset, str_format, 5);
+               put_string(smry_bufp + buf_offset, str_format, 5);
                buf_offset += 5;
                break;
 
             default:
-               put_string(line_bufp + buf_offset, delimiter_char, 1);
+               put_string(smry_bufp + buf_offset, delimiter_char, 1);
                buf_offset += 1;
                break;
             }
             break;
 
          default:
-            put_string(line_bufp + buf_offset, delimiter_char, 1);
+            put_string(smry_bufp + buf_offset, delimiter_char, 1);
             buf_offset += 1;
             break;
          }
       }
    }
 
-   return line_bufp;
+   // build the response json
+   json_bufp = get_line_buf(json_bufp, json_offset + 1);
+   strncpy(json_bufp + json_offset, "{", 1);
+   json_offset += 1;
+
+   if (strlen(smry_bufp) != 0)
+   {
+       add_json_entry(json_bufp, &json_offset, json_smry_prop, smry_bufp, FALSE);
+   }
+   if (strlen(src_bufp) != 0)
+   {
+       add_json_entry(json_bufp, &json_offset, json_src_prop, src_bufp, TRUE);
+   }
+   if (strlen(dst_bufp) != 0)
+   {
+       add_json_entry(json_bufp, &json_offset, json_dst_prop, dst_bufp, TRUE);
+   }
+   if (strlen(proto_bufp) != 0)
+   {
+       add_json_entry(json_bufp, &json_offset, json_proto_prop, proto_bufp, TRUE);
+   }
+
+   json_bufp = get_line_buf(json_bufp, json_offset + 2);
+   strncpy(json_bufp + json_offset, "}\0", 2);
+
+   return json_bufp;
 }
 
 static const nstime_t *

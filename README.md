@@ -65,7 +65,7 @@ The size of allocation of output.
 
 **detailed_json**
 
-The results can be either a summary text or a detailed json object that is controlled by this parameter.
+The results can be either a brief or a detailed json object that is controlled by this parameter.
 
 **pkt_size**
 
