@@ -1,5 +1,5 @@
-!define PRODUCT_VERSION "1.0.0.5"
-!define VERSION "1.0.0.5"
+!define PRODUCT_VERSION "1.0.0.6"
+!define VERSION "1.0.0.6"
 
 !define APPID "wiresharkdissect"
 !define APPNAME "Wireshark Dissect"
