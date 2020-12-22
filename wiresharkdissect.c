@@ -344,13 +344,13 @@ json_puts_string(char* json_bufp, size_t* json_offset, char* str)
 {
     if (!str) {
         json_bufp = get_line_buf(json_bufp, *json_offset + 1);
-        strncpy(json_bufp + *json_offset, '"', 1);
+        strncpy(json_bufp + *json_offset, "\"", 1);
         *json_offset += 1;
 
         // Maybe add "N/A" or something here later
 
         json_bufp = get_line_buf(json_bufp, *json_offset + 1);
-        strncpy(json_bufp + *json_offset, '"', 1);
+        strncpy(json_bufp + *json_offset, "\"", 1);
         *json_offset += 1;
         return;
     }
@@ -366,7 +366,7 @@ json_puts_string(char* json_bufp, size_t* json_offset, char* str)
     for (int i = 0; str[i]; i++) {
         if ((guint)str[i] < 0x20) {
             json_bufp = get_line_buf(json_bufp, *json_offset + 1);
-            strncpy(json_bufp + *json_offset, '\\', 1);
+            strncpy(json_bufp + *json_offset, "\\", 1);
             *json_offset += 1;
             json_bufp = get_line_buf(json_bufp, *json_offset + 1);
             strncpy(json_bufp + *json_offset, json_cntrl[(guint)str[i]], 1);
