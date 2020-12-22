@@ -30,7 +30,6 @@ static void write_failure_message(const char *filename, int err);
 static void failure_message_cont(const char *msg_format, va_list ap);
 
 static gchar* delimiter_char = " ";
-static gchar* quote_char = "\"";
 
 static proto_node_children_grouper_func node_children_grouper = 
          proto_node_group_children_by_unique;
@@ -340,6 +339,59 @@ put_string_spaces(char *dest, const char *str, size_t str_len, size_t str_with_s
    dest[str_with_spaces] = '\0';
 }
 
+static void
+json_puts_string(char* json_bufp, size_t* json_offset, char* str)
+{
+    if (!str) {
+        json_bufp = get_line_buf(json_bufp, *json_offset + 1);
+        strncpy(json_bufp + *json_offset, '"', 1);
+        *json_offset += 1;
+
+        // Maybe add "N/A" or something here later
+
+        json_bufp = get_line_buf(json_bufp, *json_offset + 1);
+        strncpy(json_bufp + *json_offset, '"', 1);
+        *json_offset += 1;
+        return;
+    }
+
+    static const char json_cntrl[0x20][6] = {
+        "u0000", "u0001", "u0002", "u0003", "u0004", "u0005", "u0006", "u0007", "b",     "t",     "n",     "u000b", "f",     "r",     "u000e", "u000f",
+        "u0010", "u0011", "u0012", "u0013", "u0014", "u0015", "u0016", "u0017", "u0018", "u0019", "u001a", "u001b", "u001c", "u001d", "u001e", "u001f"
+    };
+
+    json_bufp = get_line_buf(json_bufp, *json_offset + 1);
+    strncpy(json_bufp + *json_offset, "\"", 1);
+    *json_offset += 1;
+    for (int i = 0; str[i]; i++) {
+        if ((guint)str[i] < 0x20) {
+            json_bufp = get_line_buf(json_bufp, *json_offset + 1);
+            strncpy(json_bufp + *json_offset, '\\', 1);
+            *json_offset += 1;
+            json_bufp = get_line_buf(json_bufp, *json_offset + 1);
+            strncpy(json_bufp + *json_offset, json_cntrl[(guint)str[i]], 1);
+            *json_offset += 1;
+        } else if (i > 0 && str[i - 1] == '<' && str[i] == '/') {
+            // Convert </script> to <\/script> to avoid breaking web pages.
+            json_bufp = get_line_buf(json_bufp, *json_offset + 1);
+            strncpy(json_bufp + *json_offset, "/", 1);
+            *json_offset += 1;
+        } else {
+            if (str[i] == '\\' || str[i] == '"') {
+                json_bufp = get_line_buf(json_bufp, *json_offset + 1);
+                strncpy(json_bufp + *json_offset, "\\", 1);
+                *json_offset += 1;
+            }
+            json_bufp = get_line_buf(json_bufp, *json_offset + 1);
+            strncpy(json_bufp + *json_offset, &str[i], 1);
+            *json_offset += 1;
+        }
+    }
+    json_bufp = get_line_buf(json_bufp, *json_offset + 1);
+    strncpy(json_bufp + *json_offset, "\"", 1);
+    *json_offset += 1;
+}
+
 static inline void
 add_json_entry(char* json_bufp, size_t* json_offset, char* name, char* value, BOOL comma_prefix)
 {
@@ -357,12 +409,7 @@ add_json_entry(char* json_bufp, size_t* json_offset, char* name, char* value, BO
 
     strncpy(json_bufp + *json_offset, name, strlen(name));
     *json_offset += strlen(name);
-    strncpy(json_bufp + *json_offset, quote_char, 1);
-    *json_offset += 1;
-    strncpy(json_bufp + *json_offset, value, strlen(value));
-    *json_offset += strlen(value);
-    strncpy(json_bufp + *json_offset, quote_char, 1);
-    *json_offset += 1;
+    json_puts_string(json_bufp, json_offset, value);
 }
 
 // this is tshark's print_columns with some modifications
